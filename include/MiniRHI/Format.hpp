@@ -89,6 +89,4 @@ namespace minirhi
 		MINIRHI_DECLARE_FORMAT_TYPE_(RGB32UInt_t, eRGB32_UInt, 12);
 		MINIRHI_DECLARE_FORMAT_TYPE_(RGBA32UInt_t, eRGBA32_UInt, 16);
 	}
-
-	static_assert(format::R16Float_t::underlying() == Format::eR16_Float);
 }

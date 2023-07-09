@@ -1,0 +1,1 @@
+Checks: '-*,clang-analyzer-*,android-*,bugprone-*,cert-*,concurrency-*,cppcoreguidelines-*,misc-*,modernize-*,performance-*,readability-*,-modernize-use-trailing-return-type,-readability-identifier-length,-readability-uppercase-literal-suffix,-misc-non-private-member-variables-in-classes'

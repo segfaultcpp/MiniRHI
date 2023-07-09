@@ -48,7 +48,7 @@ namespace minirhi {
 			return initial_data.data();
 		}
 	};
-
+	
 	template<typename T, std::size_t N>
 	BufferDesc(BufferType, std::span<T, N>) -> BufferDesc<std::remove_cvref_t<T>>;
 
@@ -78,7 +78,7 @@ namespace minirhi {
 		Buffer() noexcept = default;
 		explicit Buffer(const BufferDesc<TElem> buffer_desc) noexcept
 		    : desc(buffer_desc)
-			, handle(detail::create_buffer_(desc.type, buffer_desc.size_bytes(), std::bit_cast<const void*>(buffer_desc.data())))
+			, handle(detail::create_buffer_(buffer_desc.type, buffer_desc.size_bytes(), std::bit_cast<const void*>(buffer_desc.data())))
 		{}	
 	};
 

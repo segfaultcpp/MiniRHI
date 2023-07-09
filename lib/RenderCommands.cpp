@@ -67,13 +67,13 @@ namespace minirhi
 		glClear(GL_STENCIL_BUFFER_BIT);
 	}
 
-	void RenderCommands::clear_buffer(GLbitfield bufferType, f32 r, f32 g, f32 b, f32 a) noexcept {
+	void RenderCommands::clear_buffer(GLbitfield buffer_type, f32 r, f32 g, f32 b, f32 a) noexcept {
 		glClearColor(r, g, b, a);
-		glClear(bufferType);
+		glClear(buffer_type);
 	}
 
 	void RenderCommands::setup_pipeline_(std::span<const VtxAttrData> attribs, const RasterizerStateDesc& rasterizer, const Viewport& vp, u32 vb, u32 ib, u32 program) noexcept {
-		glViewport(vp.x, vp.y, vp.width, vp.height);
+		glViewport(GLint(vp.x), GLint(vp.y), GLint(vp.width), GLint(vp.height));
 
 		glUseProgram(program);
 		if (vb != kBufferInvalidHandle) {
@@ -87,15 +87,16 @@ namespace minirhi
 
 		std::size_t i = 0;
 		for (auto[format, size, offset, stride] : attribs) {
-			glEnableVertexAttribArray(i);
 			glVertexAttribPointer(
 				i, 
-				get_component_count(format),
+				GLint(get_component_count(format)),
 				get_format_type(format),
 				GL_FALSE,
-				stride,
-				(void*)offset
+				GLsizei(stride),
+				std::bit_cast<void*>(offset)
 			);
+			glEnableVertexAttribArray(i);
+			i++;
 		}
 
 		if (vb != kBufferInvalidHandle) {

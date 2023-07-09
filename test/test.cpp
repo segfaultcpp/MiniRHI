@@ -17,7 +17,7 @@
 static constexpr std::size_t kScreenWidth = 1280;
 static constexpr std::size_t kScreenHeight = 720;
 
-int main(int argc, char* args[]) {
+int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         return -1;
     }
@@ -47,9 +47,11 @@ int main(int argc, char* args[]) {
     
     struct Vertex {
         std::array<f32, 3> position;
+        std::array<f32, 3> color;
 
         static constexpr auto get_attrs() noexcept {
             return minirhi::VtxAttrArr<
+                minirhi::VtxAttr<minirhi::format::RGB32Float_t>,
                 minirhi::VtxAttr<minirhi::format::RGB32Float_t>
             >{};
         }
@@ -60,17 +62,23 @@ int main(int argc, char* args[]) {
     static constexpr std::string_view kVS = R"str(
 #version 330 core
 layout (location = 0) in vec3 position;
+layout (location = 1) in vec3 color;
+
+out vec3 vert_color;
 
 void main() {
     gl_Position = vec4(position, 1.0);
+    vert_color = color;
 })str";
 
     static constexpr std::string_view kFS = R"str(
 #version 330 core
+
+in vec3 vert_color;
 out  vec4 frag_color;
 
 void main() {
-    frag_color = vec4(0.0, 1.0, 1.0, 1.0);
+    frag_color = vec4(vert_color, 1.0);
 }
 )str";
 
@@ -81,13 +89,12 @@ void main() {
         .build();
 
     static constexpr std::array vertices = {
-        Vertex { {-1.f, -1.f, 0.f} },
-        Vertex { {1.f, -1.f, 0.f} },
-        Vertex { {0.f, 1.f, 0.f} },
+        Vertex { {-1.f, -1.f, 0.f}, {1.f, 0.f, 0.f} },
+        Vertex { {1.f, -1.f, 0.f}, {0.f, 1.f, 0.f} },
+        Vertex { {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f} },
     }; 
     minirhi::BufferDesc desc{ minirhi::BufferType::eVertex, std::span(vertices) };
     auto vb = minirhi::make_buffer_rc(desc);
-    // std::cout << "Hello RenderDoc! Passed vb initialization.\n";
     
     minirhi::RenderCommands cmd;
     minirhi::Viewport vp{ kScreenWidth, kScreenHeight };
@@ -95,7 +102,7 @@ void main() {
     auto draw_params = minirhi::make_draw_params(vp, pipeline, vb);
 
     while(!quit) { 
-        while(SDL_PollEvent( &e )) { 
+        while(SDL_PollEvent( &e ) != 0) { 
             if(e.type == SDL_QUIT) {
                 quit = true;
             }
