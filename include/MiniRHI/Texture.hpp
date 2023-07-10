@@ -49,13 +49,13 @@ namespace minirhi {
 		{}
 
 		[[nodiscard]]
-		static TextureDesc texture_1D(u32 w, Format pixelFormat, const u8* initialData = nullptr, bool enableMips = false) noexcept {
-			return TextureDesc{ TextureSize{ w, 1, 1 }, TextureExtent::e2D, pixelFormat, enableMips, initialData };
+		static TextureDesc texture_1D(u32 w, Format format, const u8* data = nullptr, bool enable_mips = false) noexcept {
+			return TextureDesc{ TextureSize{ w, 1, 1 }, TextureExtent::e2D, format, enable_mips, data };
 		}
 
 		[[nodiscard]]
-		static TextureDesc texture_2D(u32 w, u32 h, Format pixelFormat, const u8* initialData = nullptr, bool enableMips = false) noexcept {
-			return TextureDesc{ TextureSize{ w, h, 1 }, TextureExtent::e2D, pixelFormat, enableMips, initialData };
+		static TextureDesc texture_2D(u32 w, u32 h, Format format, const u8* data = nullptr, bool enable_mips = false) noexcept {
+			return TextureDesc{ TextureSize{ w, h, 1 }, TextureExtent::e2D, format, enable_mips, data };
 		}
 	};
 
@@ -119,20 +119,33 @@ namespace minirhi {
 
 	inline static constexpr u32 kInvalidTextureHandle = std::numeric_limits<u32>::max();
 
-	class Texture {
-	public:
-		u32 handle;
+	namespace detail {
+		u32 create_texture_impl_(const TextureDesc& desc, const SamplerDesc& sampler) noexcept;
+	}
+
+	struct Texture {
+		u32 handle{};
 		TextureDesc desc;
 		SamplerDesc sampler;
 
-		using DestroyFn = void(Texture& handle);
 		static void destroy(Texture& tex) noexcept;
 
-		Texture() noexcept = default;
-		Texture(const TextureDesc& desc, const SamplerDesc& sampler) noexcept;
+		explicit Texture() noexcept = default;
+
+		explicit Texture(const TextureDesc& tex_desc, const SamplerDesc& tex_sampler) noexcept
+			: handle(detail::create_texture_impl_(desc, sampler))
+			, desc(tex_desc)
+			, sampler(tex_sampler)
+		{}
 	};
 
-	static_assert(std::is_trivially_copyable_v<Texture> && std::is_trivially_copyable_v<TextureDesc>, "minirhi::Texture and minirhi::TextureDesc must be trivially copyable.");
-
 	using TextureRC = RC<Texture>;
+
+	inline TextureRC make_texture_rc(const TextureDesc& desc, const SamplerDesc& sampler) noexcept {
+		return TextureRC{ desc, sampler };
+	}
+
+	inline TextureRC make_texture_2d_rc(const SamplerDesc& sampler, u32 w, u32 h, Format format, const u8* data = nullptr, bool enable_mips = false) noexcept {
+		return TextureRC{ TextureDesc::texture_2D(w, h, format, data, enable_mips), sampler };
+	}
 }

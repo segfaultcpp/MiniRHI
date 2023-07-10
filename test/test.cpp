@@ -97,13 +97,27 @@ void main() {
         Vertex { {1.f, 1.f}, {0.f, 1.f, 1.f} },
         Vertex { {0.5f, -1.f}, {1.f, 0.f, 1.f} },
     };
+
+    static constexpr std::array indexed_vertices = {
+        Vertex { {-0.5f, -0.5f}, {1.f, 0.f, 0.f} },
+        Vertex { {0.5f, -0.5f}, {0.f, 1.f, 0.f} },
+        Vertex { {-0.5f, 0.5f}, {0.f, 0.f, 1.f} },
+        Vertex { {0.5f, 0.5f}, {1.f, 1.f, 0.f} },
+    };
+
+    static constexpr std::array indices = {
+        u32(0), u32(1), u32(2), u32(2), u32(1), u32(3)
+    };
+
     auto vb = minirhi::make_vertex_buffer_rc(std::span<const Vertex>(vertices.begin(), vertices.end()));
-    
-    
+    auto indexed_vb = minirhi::make_vertex_buffer_rc(std::span<const Vertex>(indexed_vertices.begin(), indexed_vertices.end()));
+    auto ib = minirhi::make_index_buffer_rc(std::span<const u32>(indices.begin(), indices.end()));
+
     minirhi::RenderCommands cmd;
     minirhi::Viewport vp{ kScreenWidth, kScreenHeight };
 
     auto draw_params = minirhi::make_draw_params(vp, pipeline, vb);
+    auto indexed_draw_params = minirhi::make_draw_params_indexed(vp, pipeline, indexed_vb, ib);
 
     while(!quit) { 
         while(SDL_PollEvent( &e ) != 0) { 
@@ -112,7 +126,8 @@ void main() {
             }
         }
         cmd.clear_color_buffer(1.0, 0.0, 0.0, 0.0);
-        cmd.draw(draw_params, vertices.size(), 0);
+        cmd.draw_indexed(indexed_draw_params, indices.size(), 0);
+        // cmd.draw(draw_params, vertices.size(), 0);
         SDL_GL_SwapWindow(window.ptr);
     }
 
