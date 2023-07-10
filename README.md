@@ -60,8 +60,7 @@ static constexpr std::array vertices = {
         Vertex { {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f} },
 };
 
-minirhi::BufferDesc desc{ minirhi::BufferType::eVertex, std::span(vertices) };
-auto vb = minirhi::make_buffer_rc(desc);
+auto vb = minirhi::make_vertex_buffer_rc(std::span<const Vertex>(vertices.begin(), vertices.end()));
 
 minirhi::RenderCommands cmd;
 minirhi::Viewport vp{ kScreenWidth, kScreenHeight };

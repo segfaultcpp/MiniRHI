@@ -99,6 +99,7 @@ void main() {
     };
     auto vb = minirhi::make_vertex_buffer_rc(std::span<const Vertex>(vertices.begin(), vertices.end()));
     
+    
     minirhi::RenderCommands cmd;
     minirhi::Viewport vp{ kScreenWidth, kScreenHeight };
 
