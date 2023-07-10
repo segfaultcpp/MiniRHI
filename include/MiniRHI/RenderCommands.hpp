@@ -68,17 +68,17 @@ namespace minirhi
 		}
 	};
 	
-	template<typename PipelineAttrs, typename VtxElem>
+	template<typename PipelineAttrs, TVtxElem VtxElem>
 	struct DrawParams {
-		Viewport viewport;
-		PipelineState<PipelineAttrs> pipeline;
-		BufferRC<VtxElem> vertex_buffer;
-		BufferRC<u32> index_buffer;
-		BindingSet bindings;
+		Viewport viewport{};
+		PipelineState<PipelineAttrs> pipeline{};
+		VertexBufferRC<VtxElem> vertex_buffer{};
+		IndexBufferRC index_buffer{};
+		BindingSet bindings{};
 	};
 
-	template<typename PipelineAttrs, typename VtxElem>
-	auto make_draw_params(const Viewport& vp, const PipelineState<PipelineAttrs>& ps, BufferRC<VtxElem> vb) noexcept {
+	template<typename PipelineAttrs, TVtxElem VtxElem>
+	auto make_draw_params(const Viewport& vp, const PipelineState<PipelineAttrs>& ps, VertexBufferRC<VtxElem> vb) noexcept {
 		return DrawParams<PipelineAttrs, VtxElem> {
 			.viewport = vp,
 			.pipeline = ps,
@@ -90,8 +90,8 @@ namespace minirhi
 	auto make_draw_params_indexed(
 		const Viewport& vp, 
 		const PipelineState<PipelineAttrs>& ps, 
-		BufferRC<VtxElem> vb, 
-		BufferRC<u32> ib
+		VertexBufferRC<VtxElem> vb, 
+		IndexBufferRC ib
 	) noexcept {
 		return DrawParams<PipelineAttrs, VtxElem> {
 			.viewport = vp,
@@ -108,7 +108,6 @@ namespace minirhi
 	public:
 		explicit RenderCommands() noexcept;
 
-	public:
 		void clear_color_buffer(f32 r, f32 g, f32 b, f32 a) noexcept;
 		void clear_depth_buffer() noexcept;
 		void clear_stencil_buffer() noexcept;
@@ -127,7 +126,7 @@ namespace minirhi
 		// 	PushConstant(selectedShaderProgram, uniformLocation, std::forward<ConstantType>(value));
 		// }
 
-		void PushConstant(u32 program, u32 location, const TextureRC& value) noexcept;
+		void PushConstant(u32 program, u32 location, TextureRC value) noexcept;
 		void PushConstant(u32 program, u32 location, u32 value) noexcept;
 		void PushConstant(u32 program, u32 location, f32 value) noexcept;
 		void PushConstant(u32 program, u32 location, f32 x, f32 y) noexcept;
@@ -148,8 +147,8 @@ namespace minirhi
 				attrs, 
 				params.pipeline.rasterizer, 
 				params.viewport, 
-				!vb.IsEmpty() ? vb.Get().handle : kBufferInvalidHandle, 
-				!ib.IsEmpty() ? ib.Get().handle : kBufferInvalidHandle,
+				!vb.is_empty() ? vb.get().handle : kBufferInvalidHandle, 
+				!ib.is_empty() ? ib.get().handle : kBufferInvalidHandle,
 				params.pipeline.shader_program
 			);
 
@@ -168,12 +167,12 @@ namespace minirhi
 				attrs, 
 				params.pipeline.rasterizer, 
 				params.viewport, 
-				!vb.IsEmpty() ? vb.Get().handle : kBufferInvalidHandle, 
-				!ib.IsEmpty() ? ib.Get().handle : kBufferInvalidHandle,
+				!vb.is_empty() ? vb.get().handle : kBufferInvalidHandle, 
+				!ib.is_empty() ? ib.get().handle : kBufferInvalidHandle,
 				params.pipeline.shader_program
 			);
 
-			draw_indexed_internal_(params.pipeline.topology, params.index_buffer.Get().handle, index_count, offset);
+			draw_indexed_internal_(params.pipeline.topology, params.index_buffer.get().handle, index_count, offset);
 		}
 	
 	private:

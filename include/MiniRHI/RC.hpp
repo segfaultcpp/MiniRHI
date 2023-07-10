@@ -5,20 +5,16 @@
 #include <Core/Core.hpp>
 #include <type_traits>
 
-namespace minirhi
-{
-	template<typename Res, typename Res::DestroyFn DestroyFn>
-		requires std::is_trivially_copyable_v<Res>
-	class RC
-	{
-	protected:
+namespace minirhi {
+	template<typename Res, auto Destroy = Res::destroy>
+		requires std::is_trivially_copyable_v<Res> && std::invocable<decltype(Destroy), Res&>
+	class RC {
+	private:
 		size_t* _refCount = nullptr;
 		Res _handle;
 
 	public:
-		RC() noexcept
-			: _refCount(nullptr)
-		{}
+		explicit RC() noexcept = default;
 
 		template<typename... Args>
 		explicit RC(Args&&... args) noexcept
@@ -36,10 +32,8 @@ namespace minirhi
 			}
 		}
 
-		RC& operator=(const RC& rhs) noexcept
-		{
-			if (_refCount != nullptr)
-			{
+		RC& operator=(const RC& rhs) noexcept {
+			if (_refCount != nullptr) {
 				--(*_refCount);
 			}
 
@@ -60,10 +54,8 @@ namespace minirhi
 			rhs._refCount = nullptr;
 		}
 
-		RC& operator=(RC&& rhs) noexcept
-		{
-			if (_refCount == rhs._refCount)
-			{
+		RC& operator=(RC&& rhs) noexcept {
+			if (_refCount == rhs._refCount) {
 				rhs._refCount = nullptr;
 				return *this;
 			}
@@ -77,35 +69,29 @@ namespace minirhi
 			return *this;
 		}
 
-		~RC()
-		{
-			if (_refCount == nullptr)
+		~RC() noexcept {
+			if (_refCount == nullptr) {
 				return;
+			}
 
 			--(*_refCount);
 
-			if (*_refCount == 0u)
-			{
-				DestroyFn(_handle);
+			if (*_refCount == 0u) {
+				Destroy(_handle);
 				delete _refCount;
 				_refCount = nullptr;
 			}
 		}
 
-	public:
-		Res* operator->() noexcept
-		{
+		Res* operator->() noexcept {
 			return &_handle;
 		}
 
-	public:
 		template<typename... Args>
-		void Reset(Args&&... args) noexcept
-		{
+		void reset(Args&&... args) noexcept {
 			::new (&_handle) Res{ std::forward<Args>(args)... };
 
-			if (_refCount != nullptr)
-			{
+			if (_refCount != nullptr) {
 				if (*_refCount == 1u)
 				{
 					delete _refCount;
@@ -118,24 +104,23 @@ namespace minirhi
 			_refCount = new size_t(1u);
 		}
 
-	public:
-		size_t GetRefCount() const noexcept
-		{
-			return _refCount ? *_refCount : 0u;
+		[[nodiscard]] 
+		size_t get_ref_count() const noexcept {
+			return _refCount != nullptr ? *_refCount : 0u;
 		}
 
-		Res& Get() noexcept
-		{
+		[[nodiscard]]
+		Res& get() noexcept {
 			return _handle;
 		}
 
-		const Res& Get() const noexcept
-		{
+		[[nodiscard]]
+		const Res& get() const noexcept {
 			return _handle;
 		}
 
-		bool IsEmpty() const noexcept
-		{
+		[[nodiscard]] 
+		bool is_empty() const noexcept {
 			return _refCount == nullptr;
 		}
 

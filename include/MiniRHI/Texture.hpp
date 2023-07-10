@@ -2,56 +2,64 @@
 #include "Format.hpp"
 #include "RC.hpp"
 
+#include <limits>
 #include <span>
+#include <array>
 
-namespace minirhi
-{
-	enum class TextureType
-	{
-		eTexture1D,
-		eTexture2D,
-		eTexture3D,
+#include <glm/vec2.hpp>
+
+namespace minirhi {
+	enum class TextureExtent {
+		e1D,
+		e2D,
+		e3D,
 		eUnknown,
 		eCount,
 	};
 
-	u32 ConvertTextureType(TextureType type) noexcept;
+	u32 convert_texture_extent(TextureExtent extent) noexcept;
 
-	struct TextureDesc
-	{
-		u32 Width;
-		u32 Height;
-		TextureType Type;
-		Format PixelFormat;
-		bool EnableMips;
-		const u8* InitialData;
+	struct TextureSize {
+		u32 width;
+		u32 height;
+		u32 array_size;
+	};
 
-		TextureDesc() noexcept
-			: Width(1u)
-			, Height(1u)
-			, Type(TextureType::eUnknown)
-			, PixelFormat(Format::eUnknown)
-			, EnableMips(false)
-			, InitialData(nullptr)
+	struct TextureDesc {
+		TextureSize size;
+		TextureExtent extent;
+		Format pixel_format;
+		bool enable_mips;
+		const u8* initial_data;
+
+		explicit TextureDesc() noexcept
+			: size({0, 0, 0})
+			, extent(TextureExtent::eUnknown)
+			, pixel_format(Format::eUnknown)
+			, enable_mips(false)
+			, initial_data(nullptr)
 		{}
 
-		TextureDesc(u32 w, u32 h, TextureType dimension, Format format, bool enableMips, const u8* initialData) noexcept
-			: Width(w)
-			, Height(h)
-			, Type(dimension)
-			, PixelFormat(format)
-			, EnableMips(enableMips)
-			, InitialData(initialData)
+		explicit TextureDesc(const TextureSize& texture_size, TextureExtent texture_extent, Format format, bool enableMips, const u8* initialData) noexcept
+			: size(texture_size)
+			, extent(texture_extent)
+			, pixel_format(format)
+			, enable_mips(enableMips)
+			, initial_data(initialData)
 		{}
 
-		static TextureDesc Texture2D(u32 w, u32 h, Format pixelFormat, bool enableMips, const u8* initialData = nullptr) noexcept
-		{
-			return TextureDesc{ w, h, TextureType::eTexture2D, pixelFormat, enableMips, initialData };
+		[[nodiscard]]
+		static TextureDesc texture_1D(u32 w, Format pixelFormat, const u8* initialData = nullptr, bool enableMips = false) noexcept {
+			return TextureDesc{ TextureSize{ w, 1, 1 }, TextureExtent::e2D, pixelFormat, enableMips, initialData };
+		}
+
+		[[nodiscard]]
+		static TextureDesc texture_2D(u32 w, u32 h, Format pixelFormat, const u8* initialData = nullptr, bool enableMips = false) noexcept {
+			return TextureDesc{ TextureSize{ w, h, 1 }, TextureExtent::e2D, pixelFormat, enableMips, initialData };
 		}
 	};
 
-	enum class TextureAddressMode
-	{
+	enum class TextureAddressMode {
 		eWrap,
 		eClamp,
 		eMirror,
@@ -59,147 +67,72 @@ namespace minirhi
 		eMirrorOnce
 	};
 
-	u32 ConvertAddressMode(TextureAddressMode mode) noexcept;
+	u32 convert_address_mode(TextureAddressMode mode) noexcept;
 
-	enum class TextureFilter
-	{
+	enum class TextureFilter {
 		eNone,
 		eNearest,
 		eLinear,
 	};
 
-	u32 ConvertTextureFilter(TextureFilter filter) noexcept;
+	u32 convert_texture_filter(TextureFilter filter) noexcept;
 
-	struct SamplerDesc
-	{
-		f32 BorderColor[4];
-		f32 MipLODBias;
-		TextureAddressMode U;
-		TextureAddressMode V;
-		TextureAddressMode W;
-		TextureFilter MinFilter;
-		TextureFilter MagFilter;
+	struct SamplerDesc {
+		std::array<f32, 4> border_color;
+		f32 mip_lod_bias;
+		TextureAddressMode u;
+		TextureAddressMode v;
+		TextureAddressMode w;
+		TextureFilter min_filter;
+		TextureFilter mag_filter;
 
 		SamplerDesc() noexcept
-			: BorderColor{ 0.f, 0.f, 0.f, 0.f }
-			, MipLODBias(0)
-			, U(TextureAddressMode::eWrap)
-			, V(TextureAddressMode::eWrap)
-			, W(TextureAddressMode::eWrap)
-			, MinFilter(TextureFilter::eNone)
-			, MagFilter(TextureFilter::eNone)
+			: border_color{ 0.f, 0.f, 0.f, 0.f }
+			, mip_lod_bias(0)
+			, u(TextureAddressMode::eWrap)
+			, v(TextureAddressMode::eWrap)
+			, w(TextureAddressMode::eWrap)
+			, min_filter(TextureFilter::eNone)
+			, mag_filter(TextureFilter::eNone)
 		{}
 
-		SamplerDesc(std::span<f32, 4> borderColor, f32 mipBias, 
-			TextureAddressMode u, TextureAddressMode v, TextureAddressMode w, 
-			TextureFilter min, TextureFilter mag) noexcept
-			: MipLODBias(mipBias)
-			, U(u)
-			, V(v)
-			, W(w)
-			, MinFilter(min)
-			, MagFilter(mag)
+		SamplerDesc(
+			std::span<f32, 4> bord_color, 
+			f32 mip_bias, 
+			TextureAddressMode u_axis, 
+			TextureAddressMode v_axis, 
+			TextureAddressMode w_axis, 
+			TextureFilter min, 
+			TextureFilter mag
+		) noexcept
+			: border_color()
+			, mip_lod_bias(mip_bias)
+			, u(u_axis)
+			, v(v_axis)
+			, w(w_axis)
+			, min_filter(min)
+			, mag_filter(mag)
 		{
-			BorderColor[0] = borderColor[0];
-			BorderColor[1] = borderColor[1];
-			BorderColor[2] = borderColor[2];
-			BorderColor[3] = borderColor[3];
-		}
-
-		SamplerDesc& SetBorderColor(f32 r, f32 g, f32 b, f32 a) noexcept
-		{
-			BorderColor[0] = r;
-			BorderColor[1] = g;
-			BorderColor[2] = b;
-			BorderColor[3] = a;
-			return *this;
-		}
-
-		SamplerDesc& SetMipLODBias(f32 mipBias) noexcept
-		{
-			MipLODBias = mipBias;
-			return *this;
-		}
-
-		SamplerDesc& SetAddressMode(TextureAddressMode u, TextureAddressMode v, TextureAddressMode w) noexcept
-		{
-			U = u;
-			V = v;
-			W = w;
-			return *this;
-		}
-
-		SamplerDesc& SetAddressModeForU(TextureAddressMode u) noexcept
-		{
-			U = u;
-			return *this;
-		}
-
-		SamplerDesc& SetAddressModeForV(TextureAddressMode v) noexcept
-		{
-			V = v;
-			return *this;
-		}
-
-		SamplerDesc& SetAddressModeForW(TextureAddressMode w) noexcept
-		{
-			W = w;
-			return *this;
-		}
-
-		SamplerDesc& SetMinFilter(TextureFilter min) noexcept
-		{
-			MinFilter = min;
-			return *this;
-		}
-
-		SamplerDesc& SetMagFilter(TextureFilter mag) noexcept
-		{
-			MagFilter = mag;
-			return *this;
+			std::copy(bord_color.begin(), bord_color.end(), border_color.begin());
 		}
 	};
 
-	class Texture
-	{
-	private:
-		u32 _handle;
-		TextureDesc _desc;
-		SamplerDesc _sampler;
+	inline static constexpr u32 kInvalidTextureHandle = std::numeric_limits<u32>::max();
 
+	class Texture {
 	public:
+		u32 handle;
+		TextureDesc desc;
+		SamplerDesc sampler;
+
 		using DestroyFn = void(Texture& handle);
-		static void Destroy(Texture& tex) noexcept;
+		static void destroy(Texture& tex) noexcept;
 
-	public:
 		Texture() noexcept = default;
 		Texture(const TextureDesc& desc, const SamplerDesc& sampler) noexcept;
-
-	public:
-		operator u32() const noexcept
-		{
-			return _handle;
-		}
-
-		const u32 GetHandle() const noexcept
-		{
-			return _handle;
-		}
-
-	public:
-		TextureDesc GetDesc() const noexcept
-		{
-			return _desc;
-		}
-
-		SamplerDesc GetSampler() const noexcept
-		{
-			return _sampler;
-		}
-
 	};
 
 	static_assert(std::is_trivially_copyable_v<Texture> && std::is_trivially_copyable_v<TextureDesc>, "minirhi::Texture and minirhi::TextureDesc must be trivially copyable.");
 
-	using TextureRC = RC<Texture, Texture::Destroy>;
+	using TextureRC = RC<Texture>;
 }

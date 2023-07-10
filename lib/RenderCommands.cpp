@@ -189,8 +189,8 @@ namespace minirhi
 		glProgramUniformMatrix4fv(program, location, 1, GL_FALSE, glm::value_ptr(m));
 	}
 
-	void RenderCommands::PushConstant(u32 program, u32 location, const TextureRC& value) noexcept
+	void RenderCommands::PushConstant(u32 program, u32 location, TextureRC value) noexcept
 	{
-		glProgramUniform1ui(program, location, value.Get().GetHandle());
+		glProgramUniform1ui(program, location, value.get().handle);
 	}
 }

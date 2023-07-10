@@ -18,7 +18,7 @@ namespace minirhi
 		eCount,
 	};
 
-	static constexpr u32 kShaderInvalidHandle = std::numeric_limits<u32>::max();
+	inline static constexpr u32 kShaderInvalidHandle = std::numeric_limits<u32>::max();
 
 	template<ShaderType Type>
 	struct ShaderHandle {

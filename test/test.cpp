@@ -46,12 +46,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     bool quit = false; 
     
     struct Vertex {
-        std::array<f32, 3> position;
+        std::array<f32, 2> position;
         std::array<f32, 3> color;
 
         static constexpr auto get_attrs() noexcept {
             return minirhi::VtxAttrArr<
-                minirhi::VtxAttr<minirhi::format::RGB32Float_t>,
+                minirhi::VtxAttr<minirhi::format::RG32Float_t>,
                 minirhi::VtxAttr<minirhi::format::RGB32Float_t>
             >{};
         }
@@ -61,13 +61,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
 
     static constexpr std::string_view kVS = R"str(
 #version 330 core
-layout (location = 0) in vec3 position;
+layout (location = 0) in vec2 position;
 layout (location = 1) in vec3 color;
 
 out vec3 vert_color;
 
 void main() {
-    gl_Position = vec4(position, 1.0);
+    gl_Position = vec4(position, 0.0, 1.0);
     vert_color = color;
 })str";
 
@@ -89,12 +89,15 @@ void main() {
         .build();
 
     static constexpr std::array vertices = {
-        Vertex { {-1.f, -1.f, 0.f}, {1.f, 0.f, 0.f} },
-        Vertex { {1.f, -1.f, 0.f}, {0.f, 1.f, 0.f} },
-        Vertex { {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f} },
-    }; 
-    minirhi::BufferDesc desc{ minirhi::BufferType::eVertex, std::span(vertices) };
-    auto vb = minirhi::make_buffer_rc(desc);
+        Vertex { {-1.f, -1.f}, {1.f, 0.f, 0.f} },
+        Vertex { {0.f, -1.f}, {0.f, 1.f, 0.f} },
+        Vertex { {-0.5f, 1.f}, {0.f, 0.f, 1.f} },
+
+        Vertex { {0.f, 1.f}, {1.f, 1.f, 0.f} },
+        Vertex { {1.f, 1.f}, {0.f, 1.f, 1.f} },
+        Vertex { {0.5f, -1.f}, {1.f, 0.f, 1.f} },
+    };
+    auto vb = minirhi::make_vertex_buffer_rc(std::span<const Vertex>(vertices.begin(), vertices.end()));
     
     minirhi::RenderCommands cmd;
     minirhi::Viewport vp{ kScreenWidth, kScreenHeight };

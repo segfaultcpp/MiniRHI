@@ -5,23 +5,18 @@
 #include <format>
 #include <iostream>
 
-namespace minirhi
-{
-	u32 ConvertTextureType(TextureType type) noexcept
-	{
-		switch (type)
-		{
-		case TextureType::eTexture1D: return GL_TEXTURE_1D;
-		case TextureType::eTexture2D: return GL_TEXTURE_2D;
-		case TextureType::eTexture3D: return GL_TEXTURE_3D;
+namespace minirhi {
+	u32 convert_texture_extent(TextureExtent extent) noexcept {
+		switch (extent) {
+		case TextureExtent::e1D: return GL_TEXTURE_1D;
+		case TextureExtent::e2D: return GL_TEXTURE_2D;
+		case TextureExtent::e3D: return GL_TEXTURE_3D;
+		default: return 0;
 		}
-		return 0;
 	}
 
-	u32 ConvertAddressMode(TextureAddressMode mode) noexcept
-	{
-		switch (mode)
-		{
+	u32 convert_address_mode(TextureAddressMode mode) noexcept {
+		switch (mode) {
 		case TextureAddressMode::eWrap: return GL_REPEAT;
 		case TextureAddressMode::eBorder: return GL_CLAMP_TO_BORDER;
 		case TextureAddressMode::eClamp: return GL_CLAMP_TO_EDGE;
@@ -32,47 +27,46 @@ namespace minirhi
 		return 0;
 	}
 
-	u32 ConvertTextureFilter(TextureFilter filter) noexcept
-	{
-		switch (filter)
-		{
+	u32 convert_texture_filter(TextureFilter filter) noexcept {
+		switch (filter) {
 		case TextureFilter::eLinear: return GL_LINEAR;
 		case TextureFilter::eNearest: return GL_NEAREST;
+		default: return 0;
 		}
-
-		return 0;
 	}
 
-
-
-	Texture::Texture(const TextureDesc& desc, const SamplerDesc& sampler) noexcept
-	{
-		glGenTextures(1, &_handle);
+	Texture::Texture(const TextureDesc& desc, const SamplerDesc& sampler) noexcept {
+		glGenTextures(1, &handle);
 		
-		u32 target = ConvertTextureType(desc.Type);
-		glBindTexture(target, _handle);
+		auto target = GLenum(convert_texture_extent(desc.extent));
+		glBindTexture(target, handle);
 
-		glTexParameteri(target, GL_TEXTURE_WRAP_S, ConvertAddressMode(sampler.U));
-		glTexParameteri(target, GL_TEXTURE_WRAP_T, ConvertAddressMode(sampler.W));
+		glTexParameteri(target, GL_TEXTURE_WRAP_S, GLint(convert_address_mode(sampler.u)));
+		glTexParameteri(target, GL_TEXTURE_WRAP_T, GLint(convert_address_mode(sampler.w)));
 
-		glTexParameteri(target, GL_TEXTURE_MIN_FILTER, ConvertTextureFilter(sampler.MinFilter));
-		glTexParameteri(target, GL_TEXTURE_MAG_FILTER, ConvertTextureFilter(sampler.MagFilter));
+		glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GLint(convert_texture_filter(sampler.min_filter)));
+		glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GLint(convert_texture_filter(sampler.mag_filter)));
 
-		glTexParameterf(target, GL_TEXTURE_LOD_BIAS, sampler.MipLODBias);
-		glTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, sampler.BorderColor);
+		glTexParameterf(target, GL_TEXTURE_LOD_BIAS, sampler.mip_lod_bias);
+		glTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, sampler.border_color.data());
 
-		if (desc.InitialData != nullptr)
-		{
-			GLenum pixel = get_pixel_format(desc.PixelFormat);
-			GLenum format = get_pixel_format(desc.PixelFormat);
+		if (desc.initial_data != nullptr) {
+			auto format = GLint(get_pixel_format(desc.pixel_format));
+			auto type = GLint(get_format_type(desc.pixel_format));
 
-			glTexImage2D(target, 0, 
-				pixel, desc.Width, desc.Height, 0, 
-				pixel, format, 
-				(const void*)desc.InitialData);
+			glTexImage2D(
+				target, 
+				0, 
+				format, 
+				GLint(desc.size.width), 
+				GLint(desc.size.height), 
+				0, 
+				format, 
+				type, 
+				(const void*)desc.initial_data
+			);
 
-			if (desc.EnableMips)
-			{
+			if (desc.enable_mips) {
 				glGenerateMipmap(target);
 			}
 		}
@@ -80,8 +74,7 @@ namespace minirhi
 		glBindTexture(target, 0);
 	}
 
-	void Texture::Destroy(Texture& tex) noexcept
-	{
-		glDeleteTextures(1, &tex._handle);
+	void Texture::destroy(Texture& tex) noexcept {
+		glDeleteTextures(1, &tex.handle);
 	}
 }

@@ -16,8 +16,7 @@
 
 namespace minirhi
 {
-	enum class PrimitiveTopologyType
-	{
+	enum class PrimitiveTopologyType {
 		ePoint,
 		eLine,
 		eTriangle, // do we need more? 
@@ -173,20 +172,17 @@ namespace minirhi
 
 	struct BlendStateDesc {};
 
-	enum class FrontFace
-	{
+	enum class FrontFace {
 		eClockWise,
 		eCounterClockWise,
 	};
 
-	enum class CullFaceMode
-	{
+	enum class CullFaceMode {
 		eFront,
 		eBack,
 	};
 
-	enum class PolygonMode
-	{
+	enum class PolygonMode {
 		ePoint,
 		eLine,
 		eFill,
@@ -260,17 +256,13 @@ namespace minirhi
 
 	template<typename Attrs>
 	struct PipelineState {
-		VtxShaderHandle vs;
-		FragShaderHandle fs;
-		PrimitiveTopologyType topology;
-		RasterizerStateDesc rasterizer;
-		u32 shader_program;
+		VtxShaderHandle vs{};
+		FragShaderHandle fs{};
+		PrimitiveTopologyType topology = PrimitiveTopologyType::eCount;
+		RasterizerStateDesc rasterizer{};
+		u32 shader_program{};
 
-		explicit constexpr PipelineState() noexcept
-			: topology(PrimitiveTopologyType::eCount)
-			, rasterizer()
-			, shader_program(0)
-		{}
+		explicit constexpr PipelineState() noexcept = default;
 
 		explicit constexpr PipelineState(
 			VtxShaderHandle vertex_shader,
