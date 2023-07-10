@@ -8,6 +8,7 @@
 
 #include "MiniRHI/Buffer.hpp"
 #include "MiniRHI/RC.hpp"
+#include "MiniRHI/TypeInference.hpp"
 
 #include <Core/Core.hpp>
 
@@ -20,9 +21,7 @@ namespace minirhi {
 	};
 
 	template<typename T>
-	concept TVtxElem = requires() {
-		T::get_attrs();
-	};
+	concept TVtxElem = TIsVertex<T>;
 
 	u32 get_buffer_type(BufferType bufferType) noexcept;
 

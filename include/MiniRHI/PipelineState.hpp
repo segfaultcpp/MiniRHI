@@ -9,7 +9,6 @@
 #include <Core/Core.hpp>
 
 #include "MiniRHI/Format.hpp"
-#include "MiniRHI/PipelineState.hpp"
 #include "MiniRHI/Shader.hpp"
 #include "Shader.hpp"
 #include "Format.hpp"

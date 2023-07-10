@@ -9,6 +9,7 @@
 #include "MiniRHI/PipelineState.hpp"
 #include "MiniRHI/RenderCommands.hpp"
 #include "MiniRHI/Shader.hpp"
+#include "MiniRHI/TypeInference.hpp"
 #include "sdl/SDL_error.h"
 #include "sdl/SDL_keycode.h"
 #include "sdl/SDL_video.h"
@@ -16,6 +17,7 @@
 
 static constexpr std::size_t kScreenWidth = 1280;
 static constexpr std::size_t kScreenHeight = 720;
+
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -48,16 +50,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     struct Vertex {
         std::array<f32, 2> position;
         std::array<f32, 3> color;
-
-        static constexpr auto get_attrs() noexcept {
-            return minirhi::VtxAttrArr<
-                minirhi::VtxAttr<minirhi::format::RG32Float_t>,
-                minirhi::VtxAttr<minirhi::format::RGB32Float_t>
-            >{};
-        }
     };
-    
-    using Attrs = decltype(Vertex::get_attrs());
+
+    using Attrs = minirhi::MakeVertexAttributes<Vertex>;
 
     static constexpr std::string_view kVS = R"str(
 #version 330 core
