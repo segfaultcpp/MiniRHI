@@ -54,7 +54,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
 
     using Attrs = minirhi::MakeVertexAttributes<Vertex>;
 
-    static constexpr std::string_view kVS = R"str(
+    static constexpr FixedString kVS = R"str(
 #version 330 core
 layout (location = 0) in vec2 position;
 layout (location = 1) in vec3 color;
@@ -66,7 +66,7 @@ void main() {
     vert_color = color;
 })str";
 
-    static constexpr std::string_view kFS = R"str(
+    static constexpr FixedString kFS = R"str(
 #version 330 core
 
 in vec3 vert_color;
@@ -77,11 +77,10 @@ void main() {
 }
 )str";
 
-    auto pipeline = minirhi::PipelineState<Attrs>{}
-        .set_topology(minirhi::PrimitiveTopologyType::eTriangle)
-        .set_vertex_shader(minirhi::ShaderCompiler::compile_from_code<minirhi::VtxShaderHandle>(kVS))
-        .set_fragment_shader(minirhi::ShaderCompiler::compile_from_code<minirhi::FragShaderHandle>(kFS))
-        .build();
+    auto pipeline = minirhi::generate_pipeline_from_shaders<kVS, kFS>(
+        minirhi::PrimitiveTopologyType::eTriangle, 
+        minirhi::RasterizerStateDesc{}
+    );
 
     static constexpr std::array vertices = {
         Vertex { {-1.f, -1.f}, {1.f, 0.f, 0.f} },

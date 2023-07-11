@@ -169,6 +169,80 @@ namespace minirhi
 		}
 	};
 
+	namespace detail {
+		template<FixedString Code>
+		consteval auto get_input_layout_tuple() {
+			constexpr std::size_t N = ::minirhi::glsl::layout_count(Code);
+			constexpr auto p = ::minirhi::glsl::parse_input_layout<N>(Code);
+
+			return [&]<std::size_t... Ns>(std::index_sequence<Ns...>) {
+				return std::make_tuple(CTString<FixedString<p[Ns].size()>(p[Ns])>{}...);
+			}(std::make_index_sequence<N>{});
+		}
+
+		template<typename T>
+		struct ToVtxAttr_;
+
+#define MINIRHI_DECLARE_VTX_ATTR_CONVERTER_(F, S) \
+template<> \
+struct ToVtxAttr_<CTString<FixedString(S)>> { \
+	using Type = ::minirhi::VtxAttr<::minirhi::format::F>; \
+};
+
+		// TODO: Support other types
+		MINIRHI_DECLARE_VTX_ATTR_CONVERTER_(R32Float_t, "float");
+		MINIRHI_DECLARE_VTX_ATTR_CONVERTER_(RG32Float_t, "vec2");
+		MINIRHI_DECLARE_VTX_ATTR_CONVERTER_(RGB32Float_t, "vec3");
+		MINIRHI_DECLARE_VTX_ATTR_CONVERTER_(RGBA32Float_t, "vec4");
+
+		MINIRHI_DECLARE_VTX_ATTR_CONVERTER_(R32UInt_t, "uint");
+		MINIRHI_DECLARE_VTX_ATTR_CONVERTER_(RG32UInt_t, "uvec2");
+		MINIRHI_DECLARE_VTX_ATTR_CONVERTER_(RGB32UInt_t, "uvec3");
+		MINIRHI_DECLARE_VTX_ATTR_CONVERTER_(RGBA32UInt_t, "uvec4");
+
+		template<typename T>
+		struct ConvertStrToIL_;
+
+		template<typename... Args>
+		struct ConvertStrToIL_<const std::tuple<Args...>> {
+			using Type = VtxAttrArr<typename ToVtxAttr_<Args>::Type...>;
+		};
+
+		template<FixedString Code>
+		consteval auto generate_input_layout() {
+			constexpr auto tuple = get_input_layout_tuple<Code>();
+			return typename ConvertStrToIL_<decltype(tuple)>::Type {};
+		}
+	
+		namespace tests {
+			inline static constexpr auto kVS = FixedString(
+		R"str(
+#version 330 core
+layout (location = 0) in vec2 position;
+layout (location = 1) in vec3 color;
+layout (location = 1) in uint color;
+
+out vec3 vert_color;
+
+void main() {
+    gl_Position = vec4(position, 0.0, 1.0);
+    vert_color = color;
+}
+)str");
+
+			static_assert(
+				std::same_as<
+					decltype(generate_input_layout<kVS>()),
+					::minirhi::VtxAttrArr<
+						::minirhi::VtxAttr<::minirhi::format::RG32Float_t>,
+						::minirhi::VtxAttr<::minirhi::format::RGB32Float_t>,
+						::minirhi::VtxAttr<::minirhi::format::R32UInt_t>
+					>
+				>
+			);
+		}
+	}
+
 	struct BlendStateDesc {};
 
 	enum class FrontFace {
@@ -306,4 +380,16 @@ namespace minirhi
 			return *this;
 		}
 	};
+
+	template<FixedString VS ,FixedString FS>
+	inline auto generate_pipeline_from_shaders(PrimitiveTopologyType topology, const RasterizerStateDesc& rasterizer) noexcept {
+		PipelineState<decltype(detail::generate_input_layout<VS>())> pipeline{
+			ShaderCompiler::compile_from_code<VtxShaderHandle>(VS),
+			ShaderCompiler::compile_from_code<FragShaderHandle>(FS),
+			topology,
+			rasterizer
+		};
+		pipeline.build(true);
+		return pipeline;
+	}
 }

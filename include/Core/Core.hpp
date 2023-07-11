@@ -80,3 +80,38 @@ template<typename T, typename Fn>
 auto make_non_null(T ptr, Fn&& fn) noexcept {
     return NonNull<T>{ ptr, std::forward<Fn>(fn) };
 }
+
+template <std::size_t N>
+class FixedString final {
+public:
+	constexpr FixedString(const char(&str)[N + 1]) noexcept {
+		std::copy_n(str, N + 1, std::data(data));
+	}
+
+	constexpr FixedString(std::string_view sv) noexcept {
+		std::copy_n(sv.data(), N, std::data(data));
+	}
+
+	[[nodiscard]] 
+	constexpr auto operator<=>(const FixedString&) const = default;
+
+	[[nodiscard]] 
+	constexpr operator std::string_view() const {
+		return { std::data(data), N };
+	}
+
+	[[nodiscard]] 
+	constexpr std::size_t size() const { 
+		return N; 
+	}
+
+	std::array<char, N + 1> data{};
+};
+
+template <std::size_t N>
+FixedString(const char(&str)[N]) -> FixedString<N - 1>;
+
+template<FixedString Str>
+struct CTString {
+	static constexpr FixedString kValue = Str;
+};
