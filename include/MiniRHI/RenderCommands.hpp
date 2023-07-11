@@ -158,7 +158,7 @@ namespace minirhi
 		template<typename PipelineAttrs, typename VtxElem>
 		void draw_indexed(const DrawParams<PipelineAttrs, VtxElem>& params, size_t index_count, size_t offset) noexcept {
 			static_assert(TVtxElem<VtxElem>, "Vertex buffer element type must satisfy TVtxElem concept!");
-			static_assert(std::same_as<PipelineAttrs, decltype(VtxElem::get_attrs())>, "Vertex buffer's vertex attributes does not match the pipeline's vertex attributes!");
+			static_assert(std::same_as<PipelineAttrs, MakeVertexAttributes<VtxElem>>, "Vertex buffer's vertex attributes does not match the pipeline's vertex attributes!");
 		
 			auto& vb = params.vertex_buffer;
 			auto& ib = params.index_buffer;

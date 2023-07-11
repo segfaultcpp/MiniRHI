@@ -9,6 +9,8 @@
  *  If you have a `T::get_attribs()` function on your vertex class, it
  *  will use that. Otherwise, it will deduce what fields are in your Vertex struct
  *  and return you the `minirhi::minirhi::VtxAttrArr<...>`.
+ *
+ *  Supports up to 7 elements in a struct.
  *  
  *  Example:
  *      struct Vertex
@@ -30,39 +32,25 @@ namespace minirhi
             constexpr operator T();
         };
 
-        template<typename...>
-        struct Repeat {};
-
-        template<size_t T, typename T1, typename... Ty>
-        auto repeat()
+        template<typename T, typename... Ty>
+        concept BracesConstructibleFrom = requires(T t)
         {
-            if constexpr (T == 0)
+            std::is_pod_v<T>;
+            { T{ std::declval<Ty>()... } } -> std::same_as<T>;
+        };
+
+        template<typename T, size_t N, typename... Ty>
+        constexpr auto IsBracesConstructibleN()
+        {
+            if constexpr (N == 0)
             {
-                return Repeat<Ty...>{};
+                return BracesConstructibleFrom<T, Ty...>;
             }
             else
             {
-                return repeat<T - 1, T1, T1, Ty...>();
+                return IsBracesConstructibleN<T, N - 1, AnyType, Ty...>();
             }
         }
-
-        template <class T, class... TArgs>
-        decltype(void(T{ std::declval<TArgs>()... }), std::true_type{}) test_is_braces_constructible(int);
-
-        template <class, class...>
-        std::false_type test_is_braces_constructible(...);
-
-        template<typename T1, typename T2>
-        struct IsConstructibleN;
-
-        template<typename T1, typename... Ty>
-        struct IsConstructibleN<T1, Repeat<Ty...>>
-        {
-            using Value = decltype(test_is_braces_constructible<T1, Ty...>(0));
-        };
-
-        template<typename T, size_t N>
-        using IsBracesConstructible = IsConstructibleN<T, decltype(repeat<N, AnyType>())>::Value;
 
         template<typename T1>
         struct Deduce;
@@ -73,6 +61,19 @@ namespace minirhi
 	{ \
 		using Fmt = ::minirhi::format::Format_; \
 	};
+
+#define _MINIRHI_SPECIALIZE_T(Type, Format_) \
+	template<> \
+	struct Deduce<Type> \
+	{ \
+		using Fmt = ::minirhi::format::Format_; \
+	};
+
+        _MINIRHI_SPECIALIZE_T(u8, R8UInt_t);
+        _MINIRHI_SPECIALIZE_T(u16, R16UInt_t);
+        _MINIRHI_SPECIALIZE_T(u32, R32UInt_t);
+        
+        _MINIRHI_SPECIALIZE_T(f32, R32Float_t);
 
         _MINIRHI_SPECIALIZE_FOR_STD_ARRAY(f32, 1, R32Float_t);
         _MINIRHI_SPECIALIZE_FOR_STD_ARRAY(f32, 2, RG32Float_t);
@@ -91,7 +92,6 @@ namespace minirhi
 
         // TODO: others ^^^
 
-
         template<typename... T>
         struct ToVtxArr
         {
@@ -99,58 +99,67 @@ namespace minirhi
         };
 
         template<class T>
-        constexpr auto convert(T&& object) noexcept /* -> Temp<type0, type1, ...> */
+        consteval auto convert() noexcept /* -> ToVtxArr<type0, type1, ...> */
         {
             using type = std::decay_t<T>;
-            if constexpr (IsBracesConstructible<type, 5>::value)
+            T object = *std::bit_cast<T*>(nullptr); // safe: code never runs
+
+            if constexpr (IsBracesConstructibleN<type, 6>())
+            {
+                auto&& [p1, p2, p3, p4, p5, p6] = object;
+                return ToVtxArr<decltype(p1), decltype(p2), decltype(p3), decltype(p4), decltype(p5), decltype(p6)>{};
+            }
+        	else if constexpr (IsBracesConstructibleN<type, 5>())
             {
                 auto&& [p1, p2, p3, p4, p5] = object;
                 return ToVtxArr<decltype(p1), decltype(p2), decltype(p3), decltype(p4), decltype(p5)>{};
             }
-            else if constexpr (IsBracesConstructible<type, 4>::value)
+            else if constexpr (IsBracesConstructibleN<type, 4>())
             {
                 auto&& [p1, p2, p3, p4] = object;
                 return ToVtxArr<decltype(p1), decltype(p2), decltype(p3), decltype(p4)>{};
             }
-            else if constexpr (IsBracesConstructible<type, 3>::value)
+            else if constexpr (IsBracesConstructibleN<type, 3>())
             {
                 auto&& [p1, p2, p3] = object;
                 return ToVtxArr<decltype(p1), decltype(p2), decltype(p3)>{};
             }
-            else if constexpr (IsBracesConstructible<type, 2>::value)
+            else if constexpr (IsBracesConstructibleN<type, 2>())
             {
                 auto&& [p1, p2] = object;
                 return ToVtxArr<decltype(p1), decltype(p2)>{};
             }
-            else if constexpr (IsBracesConstructible<type, 1>::value)
+            else if constexpr (IsBracesConstructibleN<type, 1>())
             {
                 auto&& [p1] = object;
                 return ToVtxArr<decltype(p1)>{};
             }
             else {
-                throw "Struct does not have any attrs!";
+                return ToVtxArr<> {};
             }
         }
 
         template<typename T>
-        using Convert = typename decltype(convert(T{}))::Ty;
+        using Convert = typename decltype(convert<T>())::Ty;
 
         template<typename T>
-        concept HasGetAttrs = requires(T t)
+        struct IsVtxAttrArrEmpty;
+
+        template<typename... Ty>
+        struct IsVtxAttrArrEmpty<minirhi::VtxAttrArr<Ty...>>
         {
-            // TODO: type
-            T::get_attrs();
+            static constexpr bool Value = 0 == sizeof...(Ty);
         };
 
         template<typename T>
-        concept CanInferAttrs = requires(T t)
-        {
-            !std::is_same_v<minirhi::VtxAttrArr<>, Convert<T>>;
-        };
+        concept HasGetAttrs = !IsVtxAttrArrEmpty<decltype(T::get_attrs())>::Value;
+
+        template<typename T>
+        concept CanInferAttrs = !std::is_same_v<minirhi::VtxAttrArr<>, Convert<T>>;
     }
 
     template<typename T>
-    concept TIsVertex = detail_ti::HasGetAttrs<T> || detail_ti::CanInferAttrs<T>;
+    concept TIsVertex = std::is_pod_v<T> && (detail_ti::HasGetAttrs<T> || detail_ti::CanInferAttrs<T>);
 
     template<typename T>
     constexpr auto MakeVertexAttributes_t()
@@ -188,11 +197,18 @@ namespace minirhi
                     minirhi::VtxAttr<minirhi::format::RGB32Float_t>,
 					minirhi::VtxAttr<minirhi::format::RG8UInt_t>
                 >{};
-            }
+        	}
+
+            //using At = MakeVertexAttributes<Vertex2>;
         };
 
+        struct NonVertex
+        {};
+
+        static_assert(detail_ti::HasGetAttrs<Vertex2>);
         static_assert(std::is_same_v<MakeVertexAttributes<Vertex1>, decltype(Vertex2::get_attrs())>);
         static_assert(TIsVertex<Vertex1>);
         static_assert(TIsVertex<Vertex2>);
+        static_assert(!TIsVertex<NonVertex>);
     }
 }
