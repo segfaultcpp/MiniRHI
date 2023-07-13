@@ -3,7 +3,6 @@
 #include <concepts>
 #include <vector>
 #include <span>
-#include <ranges>
 #include <cassert>
 
 #include <Core/Core.hpp>
@@ -64,7 +63,7 @@ namespace minirhi
 		std::array<VtxAttrData, sizeof...(Attrs)> ret = {};
 
 		std::size_t offset = 0;
-		for (std::size_t i : std::views::iota(0u, sizeof...(Attrs))) {
+		for (std::size_t i = 0; i < sizeof...(Attrs); i++) {
 			ret[i] = VtxAttrData {
 				.format = formats[i], 
 				.size = sizes[i], 

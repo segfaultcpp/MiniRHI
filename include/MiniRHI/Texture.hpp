@@ -10,7 +10,9 @@
 
 namespace minirhi {
 	enum class TextureExtent {
+#ifndef ANDROID
 		e1D,
+#endif
 		e2D,
 		e3D,
 		eUnknown,
@@ -64,7 +66,9 @@ namespace minirhi {
 		eClamp,
 		eMirror,
 		eBorder,
+#ifndef ANDROID
 		eMirrorOnce
+#endif
 	};
 
 	u32 convert_address_mode(TextureAddressMode mode) noexcept;

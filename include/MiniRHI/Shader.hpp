@@ -2,10 +2,10 @@
 #include "MiniRHI/Shader.hpp"
 #include <concepts>
 #include <string_view>
-#include <format>
 #include <limits>
 #include <span>
 #include <array>
+#include <compare>
 
 #include <Core/Core.hpp>
 
@@ -51,6 +51,15 @@ namespace minirhi {
 			It end;
 			It current;
 
+			static constexpr std::string_view make_sv(It begin, It end)
+			{
+#ifdef ANDROID
+				return std::string_view(begin, (end-begin));
+#else
+				return std::string_view(begin, end);
+#endif
+			}
+
 			explicit constexpr Lexer(std::string_view c) noexcept
 				: end(c.end())
 				, current(c.begin())
@@ -72,7 +81,7 @@ namespace minirhi {
 						++current;
 					}
 
-					std::string_view value(begin, current);
+					std::string_view value = make_sv(begin, current);
 					if (value == "layout") {
 						return Token{ value, TokenType::eKW_Layout };
 					}
@@ -94,16 +103,16 @@ namespace minirhi {
 						++current;
 					}
 
-					std::string_view value(begin, current);
+					std::string_view value = make_sv(begin, current);
 					return Token{ value, TokenType::eNum };
 				}
 
 				It begin = current;
 				switch (*current) {
-				case '(': ++current; return Token{ std::string_view(begin, current), TokenType::eL_Paren };
-				case ')': ++current; return Token{ std::string_view(begin, current), TokenType::eR_Paren };
-				case '=': ++current; return Token{ std::string_view(begin, current), TokenType::eEqSign };
-				case ';': ++current; return Token{ std::string_view(begin, current), TokenType::eSemicolon };
+				case '(': ++current; return Token{ make_sv(begin, current), TokenType::eL_Paren };
+				case ')': ++current; return Token{ make_sv(begin, current), TokenType::eR_Paren };
+				case '=': ++current; return Token{ make_sv(begin, current), TokenType::eEqSign };
+				case ';': ++current; return Token{ make_sv(begin, current), TokenType::eSemicolon };
 				}
 				return Token::unknown();
 			}
@@ -152,7 +161,7 @@ namespace minirhi {
 		template<std::size_t N>
 		consteval auto parse_input_layout(std::string_view code) {
 			const std::size_t off = code.find("layout");
-			const std::string_view code_off(std::next(code.begin(), off), code.end());
+			const std::string_view code_off = Lexer::make_sv(std::next(code.begin(), off), code.end());
 
 			Lexer lexer{ code_off };
 			Token token{};

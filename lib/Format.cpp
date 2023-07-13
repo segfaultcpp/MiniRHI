@@ -1,5 +1,10 @@
 #include "MiniRHI/Format.hpp"
+#ifndef ANDROID
 #include <glew/glew.h>
+#else
+#include <GLES3/gl3.h>
+#include <GLES3/gl32.h>
+#endif
 
 namespace minirhi
 {
@@ -45,7 +50,7 @@ namespace minirhi
 		case Format::eR8_UInt:
 		case Format::eR16_UInt:
 		case Format::eR32_UInt:
-			return GL_R;
+			return GL_RED;
 
 		[[fallthrough]]; case Format::eRG16_Float:
 		case Format::eRG32_Float:

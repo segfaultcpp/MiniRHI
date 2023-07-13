@@ -1,5 +1,10 @@
 #include "MiniRHI/Buffer.hpp"
+#ifndef ANDROID
 #include <glew/glew.h>
+#else
+#include <GLES3/gl3.h>
+#include <GLES3/gl32.h>
+#endif
 
 namespace minirhi {
     u32 get_buffer_type(BufferType bufferType) noexcept {

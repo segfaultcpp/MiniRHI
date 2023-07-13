@@ -1,7 +1,12 @@
 #include "MiniRHI/Shader.hpp"
 #include <algorithm>
 
+#ifndef ANDROID
 #include <glew/glew.h>
+#else
+#include <GLES3/gl3.h>
+#include <GLES3/gl32.h>
+#endif
 
 #include <concepts>
 #include <array>
@@ -27,7 +32,7 @@ namespace minirhi {
 				glGetShaderInfoLog(shader, log.size(), nullptr, log.data());
 
 				std::string_view log_view(log.data(), log.size());
-				std::cerr << std::format("Error! Failed to compile shader! Reason: {}", log_view);
+				std::cerr << "Error! Failed to compile shader! Reason: {}" << log_view << std::endl;
 
 				return kShaderInvalidHandle;
 			}
@@ -65,7 +70,7 @@ namespace minirhi {
 			glGetProgramInfoLog(program, log.size(), nullptr, log.data());
 
 			std::string_view log_view(log.data(), log.size());
-			std::cerr << std::format("Error! Failed to link shaders! Reason: {}", log_view);
+			std::cerr << "Error! Failed to link shaders! Reason: {}" << log_view << std::endl;
 
 			return kShaderInvalidHandle;
 		}
