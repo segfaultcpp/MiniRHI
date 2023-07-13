@@ -15,6 +15,8 @@
 #include "sdl/SDL_video.h"
 #include <sdl/SDL.h>
 
+#include <format>
+
 static constexpr std::size_t kScreenWidth = 1280;
 static constexpr std::size_t kScreenHeight = 720;
 

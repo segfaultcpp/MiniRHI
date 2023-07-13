@@ -12,6 +12,13 @@ set(GLEW_USE_STATIC_LIBS OFF)
 add_library(MiniRHILib ${MINIRHI_SOURCES})
 target_include_directories(MiniRHILib PUBLIC "${CMAKE_SOURCE_DIR}/include"
     PRIVATE "${MINIRHI_3RDPARTY_DIR}/include")
-target_link_libraries(MiniRHILib PRIVATE "${MINIRHI_3RDPARTY_DIR}/lib/glew/glew32.lib" PRIVATE OpenGL32.lib)
+
+if(${ANDROID_ENABLE})
+    target_compile_options(MiniRHILib PRIVATE -static -pedantic -DANDROID -fPIC)
+    target_link_options(MiniRHILib PRIVATE -s -static -static-libstdc++ -lc++_static -lc++abi)
+else()
+    target_link_libraries(MiniRHILib PRIVATE "${MINIRHI_3RDPARTY_DIR}/lib/glew/glew32.lib" PRIVATE OpenGL32.lib)
+endif()
+
 target_compile_options(MiniRHILib PRIVATE -pedantic -Wall -Wextra)
 target_compile_options(MiniRHILib PRIVATE "$<$<CONFIG:Release>:-Werror -pedantic-errors>")

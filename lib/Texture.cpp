@@ -1,14 +1,20 @@
 #include "MiniRHI/Texture.hpp"
 #include "MiniRHI/Format.hpp"
+#ifndef ANDROID
 #include <glew/glew.h>
+#else
+#include <GLES3/gl3.h>
+#include <GLES3/gl32.h>
+#endif
 
-#include <format>
 #include <iostream>
 
 namespace minirhi {
 	u32 convert_texture_extent(TextureExtent extent) noexcept {
 		switch (extent) {
+#ifndef ANDROID
 		case TextureExtent::e1D: return GL_TEXTURE_1D;
+#endif
 		case TextureExtent::e2D: return GL_TEXTURE_2D;
 		case TextureExtent::e3D: return GL_TEXTURE_3D;
 		default: return 0;
@@ -21,7 +27,9 @@ namespace minirhi {
 		case TextureAddressMode::eBorder: return GL_CLAMP_TO_BORDER;
 		case TextureAddressMode::eClamp: return GL_CLAMP_TO_EDGE;
 		case TextureAddressMode::eMirror: return GL_MIRRORED_REPEAT;
+#ifndef ANDROID
 		case TextureAddressMode::eMirrorOnce: return GL_MIRROR_CLAMP_TO_EDGE;
+#endif
 		}
 
 		return 0;
@@ -50,7 +58,9 @@ namespace minirhi {
 			glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GLint(convert_texture_filter(sampler.min_filter)));
 			glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GLint(convert_texture_filter(sampler.mag_filter)));
 
+#ifndef ANDROID
 			glTexParameterf(target, GL_TEXTURE_LOD_BIAS, sampler.mip_lod_bias);
+#endif
 			glTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, sampler.border_color.data());
 
 			if (desc.initial_data != nullptr) {

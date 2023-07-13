@@ -1,7 +1,6 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
-#include <format>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -9,6 +8,33 @@
 #include <type_traits>
 #include <cassert>
 #include <cstdio>
+
+#ifdef ANDROID
+namespace std
+{
+	template <class _From, class _To>
+	concept convertible_to = __is_convertible_to(_From, _To) && requires {
+		static_cast<_To>(std::declval<_From>());
+	};
+
+	template <class _Derived, class _Base>
+	concept derived_from = __is_base_of(_Base, _Derived)
+						   && __is_convertible_to(const volatile _Derived*, const volatile _Base*);
+
+	template <class _FTy, class... _ArgTys>
+	concept invocable = requires(_FTy&& _Fn, _ArgTys&&... _Args) {
+		std::invoke(static_cast<_FTy&&>(_Fn), static_cast<_ArgTys&&>(_Args)...);
+	};
+
+	template <class _To, class _From,
+			enable_if_t<conjunction_v<bool_constant<sizeof(_To) == sizeof(_From)>, is_trivially_copyable<_To>,
+					is_trivially_copyable<_From>>,
+					int> = 0>
+	constexpr _To bit_cast(const _From& _Val) noexcept {
+		return __builtin_bit_cast(_To, _Val);
+	}
+}
+#endif
 
 using i8 = int8_t;
 using i16 = int16_t;

@@ -6,9 +6,7 @@
 #include "MiniRHI/RC.hpp"
 
 #include <unordered_map>
-#include <format>
 #include <cassert>
-#include <ranges>
 
 #include <Core/Core.hpp>
 
@@ -27,12 +25,14 @@ namespace minirhi
 
 	static GLenum convert_polygon_mode(PolygonMode mode) noexcept {
 		switch (mode) {
+#ifndef ANDROID
 		case PolygonMode::ePoint: return GL_POINT;
 		case PolygonMode::eLine: return GL_LINE;
 		case PolygonMode::eFill: return GL_FILL;
+#endif
+		default:
+			return 0;
 		}
-
-		return 0;
 	}
 
 	static GLenum convert_front_face(FrontFace front) noexcept {
@@ -119,14 +119,16 @@ namespace minirhi
 		}
 		glFrontFace(convert_front_face(rs.front));
 
-		glPolygonMode(GL_FRONT_AND_BACK, convert_polygon_mode(rs.polygon_mode));
-		glLineWidth(rs.line_width);
 
+		glLineWidth(rs.line_width);
+#ifndef ANDROID
+		glPolygonMode(GL_FRONT_AND_BACK, convert_polygon_mode(rs.polygon_mode));
 		if (rs.line_smooth_enabled) {
 			glEnable(GL_LINE_SMOOTH);
 		} else {
 			glDisable(GL_LINE_SMOOTH);
 		}
+#endif
 	}
 
 	void RenderCommands::draw_internal_(PrimitiveTopologyType type, size_t vertex_count, size_t offset) noexcept {
