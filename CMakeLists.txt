@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-set(ANDROID_ENABLE YES)
+set(ANDROID_ENABLE NO)
 
 if (${ANDROID_ENABLE})
     set(CMAKE_SYSTEM_NAME Linux)
