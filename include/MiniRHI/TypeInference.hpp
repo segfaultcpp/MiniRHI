@@ -1,5 +1,6 @@
 #pragma once
 #include <concepts>
+#include <type_traits>
 #include "Format.hpp"
 #include "PipelineState.hpp"
 
@@ -39,17 +40,16 @@ namespace minirhi
             { T{ std::declval<Ty>()... } } -> std::same_as<T>;
         };
 
-        template<typename T, size_t N, typename... Ty>
-        constexpr auto IsBracesConstructibleN()
-        {
-            if constexpr (N == 0)
-            {
-                return BracesConstructibleFrom<T, Ty...>;
-            }
-            else
-            {
-                return IsBracesConstructibleN<T, N - 1, AnyType, Ty...>();
-            }
+        template<std::size_t I, typename T>
+        struct Indexed {
+            using Type = T;
+        };
+
+        template<typename T, size_t N>
+        constexpr auto IsBracesConstructibleN() {
+            return []<std::size_t... Ns>(std::index_sequence<Ns...>) {
+                return BracesConstructibleFrom<T, typename Indexed<Ns, AnyType>::Type...>;
+            }(std::make_index_sequence<N>{});
         }
 
         template<typename T1>
