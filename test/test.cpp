@@ -159,8 +159,8 @@ void main() {
 
     auto bindings = minirhi::make_bindings(
         minirhi::FloatSlot<"blue_comp">(0.42f),
-        minirhi::Texture2DSlot<"tex1">(texture1.get().handle),
-        minirhi::Texture2DSlot<"tex2">(texture2.get().handle)
+        minirhi::Texture2DSlot<"tex1">(texture1),
+        minirhi::Texture2DSlot<"tex2">(texture2)
     );
 
     auto draw_params = minirhi::make_draw_params(vp, pipeline, vb, bindings);

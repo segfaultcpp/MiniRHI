@@ -148,11 +148,11 @@ namespace minirhi
 
 	template<typename Name>
 	struct Slot<CTString<FixedString(glsl::TypeNames::kSampler2D)>, Name> {
-		u32 value = kInvalidTextureHandle;
+		TextureRC value{};
 
 		explicit constexpr Slot() noexcept = default;
-		explicit constexpr Slot(u32 texture_handle) noexcept 
-			: value(texture_handle)
+		explicit constexpr Slot(TextureRC texture_handle) noexcept 
+			: value(std::move(texture_handle))
 		{}
 	};
 	template<FixedString Name>

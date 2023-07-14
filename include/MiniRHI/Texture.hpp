@@ -34,7 +34,7 @@ namespace minirhi {
 		bool enable_mips;
 		const u8* initial_data;
 
-		explicit TextureDesc() noexcept
+		explicit constexpr TextureDesc() noexcept
 			: size({0, 0, 0})
 			, extent(TextureExtent::eUnknown)
 			, pixel_format(Format::eUnknown)
@@ -42,7 +42,7 @@ namespace minirhi {
 			, initial_data(nullptr)
 		{}
 
-		explicit TextureDesc(const TextureSize& texture_size, TextureExtent texture_extent, Format format, bool enableMips, const u8* initialData) noexcept
+		explicit constexpr TextureDesc(const TextureSize& texture_size, TextureExtent texture_extent, Format format, bool enableMips, const u8* initialData) noexcept
 			: size(texture_size)
 			, extent(texture_extent)
 			, pixel_format(format)
@@ -89,7 +89,7 @@ namespace minirhi {
 		TextureFilter min_filter;
 		TextureFilter mag_filter;
 
-		SamplerDesc() noexcept
+		explicit constexpr SamplerDesc() noexcept
 			: border_color{ 0.f, 0.f, 0.f, 0.f }
 			, mip_lod_bias(0)
 			, u(TextureAddressMode::eWrap)
@@ -99,7 +99,7 @@ namespace minirhi {
 			, mag_filter(TextureFilter::eLinear)
 		{}
 
-		SamplerDesc(
+		explicit constexpr SamplerDesc(
 			std::span<f32, 4> bord_color, 
 			f32 mip_bias, 
 			TextureAddressMode u_axis, 
@@ -133,7 +133,7 @@ namespace minirhi {
 
 		static void destroy(Texture& tex) noexcept;
 
-		explicit Texture() noexcept = default;
+		explicit constexpr Texture() noexcept = default;
 
 		explicit Texture(const TextureDesc& tex_desc, const SamplerDesc& tex_sampler) noexcept
 			: handle(detail::create_texture_impl_(tex_desc, tex_sampler))

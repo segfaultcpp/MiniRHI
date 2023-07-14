@@ -135,7 +135,7 @@ namespace minirhi
 		void set_binding_(u32 program, const Slot<Type, Name>& v) noexcept {
 			static constexpr FixedString  kName = Name::kValue;
 			if constexpr (std::same_as<Slot<Type, Name>, Texture2DSlot<kName>>) {
-				set_texture2d_binding_impl_(program, std::string_view(kName), v.value);
+				set_texture2d_binding_impl_(program, std::string_view(kName), v.value.get().handle);
 				return;
 			} 
 			if constexpr (std::same_as<Slot<Type, Name>, UIntSlot<kName>>) {
