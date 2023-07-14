@@ -36,9 +36,9 @@ namespace minirhi
         };
 
         template<typename T, typename... Ty>
-        concept BracesConstructibleFrom = requires(T t)
+        concept BracesConstructibleFrom = std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T> && requires(T t)
         {
-            std::is_pod_v<T>;
+            // std::is_pod_v<T>; deprecated
             { T{ std::declval<Ty>()... } } -> std::same_as<T>;
         };
 
@@ -156,7 +156,7 @@ namespace minirhi
     }
 
     template<typename T>
-    concept TIsVertex = std::is_pod_v<T> && (detail_ti::HasGetAttrs<T> || detail_ti::CanInferAttrs<T>);
+    concept TIsVertex = std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T> && (detail_ti::HasGetAttrs<T> || detail_ti::CanInferAttrs<T>);
 
     template<typename T>
     constexpr auto MakeVertexAttributes_t()

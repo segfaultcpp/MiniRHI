@@ -5,6 +5,7 @@
 #include "MiniRHI/PipelineState.hpp"
 #include "MiniRHI/RC.hpp"
 
+#include <limits>
 #include <unordered_map>
 #include <cassert>
 
@@ -50,8 +51,16 @@ namespace minirhi
 		}
 	}
 
-	RenderCommands::RenderCommands() noexcept {
-		glGenVertexArrays(1, &vao_); // OpenGL requires VAO for drawing
+	RenderCommands make_render_commands() noexcept {
+		u32 vao = 0;
+		glGenVertexArrays(1, &vao); // OpenGL requires VAO for drawing
+		return RenderCommands(vao);
+	}
+
+	RenderCommands::~RenderCommands() noexcept {
+		if (vao_ != std::numeric_limits<u32>::max()) {
+			glDeleteVertexArrays(1, &vao_);
+		}
 	}
 
 	void RenderCommands::clear_color_buffer(f32 r, f32 g, f32 b, f32 a) noexcept {
@@ -73,6 +82,8 @@ namespace minirhi
 	}
 
 	void RenderCommands::setup_pipeline_(std::span<const VtxAttrData> attribs, const RasterizerStateDesc& rasterizer, const Viewport& vp, u32 vb, u32 ib, u32 program) noexcept {
+		assert(vao_ != std::numeric_limits<u32>::max() && "Use of invalid render commands!");
+		
 		glViewport(GLint(vp.x), GLint(vp.y), GLint(vp.width), GLint(vp.height));
 
 		glUseProgram(program);

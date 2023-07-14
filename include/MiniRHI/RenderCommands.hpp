@@ -107,11 +107,46 @@ namespace minirhi
 
 	class RenderCommands {
 	private:
-		u32 vao_ = std::numeric_limits<u32>::max();
+		static constexpr u32 kInvalidVAHandle = std::numeric_limits<u32>::max();
+
+		friend RenderCommands make_render_commands() noexcept;
+
+		u32 vao_ = kInvalidVAHandle;
 		std::size_t bound_texture_count_ = 0;
 
+		explicit RenderCommands(u32 vao) noexcept 
+			: vao_(vao)
+		{}
+
 	public:
-		explicit RenderCommands() noexcept;
+		explicit RenderCommands() noexcept = default;
+		
+		RenderCommands(const RenderCommands&) = delete;
+		RenderCommands& operator=(const RenderCommands&) = delete;
+
+		RenderCommands(RenderCommands&& rhs) noexcept
+			: vao_(rhs.vao_)
+			, bound_texture_count_(rhs.bound_texture_count_)
+		{
+			rhs.vao_ = kInvalidVAHandle;
+			rhs.bound_texture_count_ = 0;
+		}
+
+		RenderCommands& operator=(RenderCommands&& rhs) noexcept {
+			if (this == &rhs) {
+				return *this;
+			}
+
+			vao_ = rhs.vao_;
+			bound_texture_count_ = rhs.bound_texture_count_;
+
+			rhs.vao_ = kInvalidVAHandle;
+			rhs.bound_texture_count_ = 0;
+
+			return *this;
+		}
+
+		~RenderCommands() noexcept;
 
 		void clear_color_buffer(f32 r, f32 g, f32 b, f32 a) noexcept;
 		void clear_depth_buffer() noexcept;
@@ -186,4 +221,7 @@ namespace minirhi
 
 		void set_rasterizer_state_(const RasterizerStateDesc& rs) noexcept;
 	};
+
+	[[nodiscard]]
+	RenderCommands make_render_commands() noexcept;
 }
