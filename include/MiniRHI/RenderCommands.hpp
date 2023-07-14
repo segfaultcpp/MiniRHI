@@ -1,4 +1,7 @@
 #pragma once
+#include "Core/Core.hpp"
+#include "MiniRHI/Shader.hpp"
+#include <type_traits>
 #ifndef ANDROID
 #include <glew/glew.h>
 #else
@@ -50,59 +53,55 @@ namespace minirhi
 			return *this;
 		}
 	};
-
-	enum class ItemType {
-		eConstant,
-		eTexture,
-	};
-
-	struct BindingSetItem {
-		u32 location;
-		u32 handle;
-	};
-
-	struct BindingSet {
-		std::array<BindingSetItem, 16> textures;
-		size_t bound_texture_count = 0;
-
-		BindingSet& PushTexture(u32 location, u32 handle) noexcept
-		{
-			// TODO: BoundTextureCount > 16
-			textures[bound_texture_count++] = BindingSetItem{ location, handle };
-			return *this;
-		}
-	};
 	
-	template<typename PipelineAttrs, TVtxElem VtxElem>
+	template<typename PipelineAttrs, TVtxElem VtxElem, typename BS, typename... Slots>
 	struct DrawParams {
 		Viewport viewport{};
-		PipelineState<PipelineAttrs> pipeline{};
+		PipelineState<PipelineAttrs, BS> pipeline{};
 		VertexBufferRC<VtxElem> vertex_buffer{};
 		IndexBufferRC index_buffer{};
-		BindingSet bindings{};
+		BindingSet<Slots...> bindings{};
 	};
 
-	template<typename PipelineAttrs, TVtxElem VtxElem>
-	auto make_draw_params(const Viewport& vp, const PipelineState<PipelineAttrs>& ps, VertexBufferRC<VtxElem> vb) noexcept {
-		return DrawParams<PipelineAttrs, VtxElem> {
+	template<typename PipelineAttrs, TVtxElem VtxElem, typename BS, typename... Slots>
+	auto make_draw_params(
+		const Viewport& vp, 
+		const PipelineState<PipelineAttrs, BS>& ps, 
+		VertexBufferRC<VtxElem> vb,
+		const BindingSet<Slots...>& bindings = kEmptyBindings
+	) noexcept {
+		return DrawParams<PipelineAttrs, VtxElem, BS, Slots...> {
 			.viewport = vp,
 			.pipeline = ps,
 			.vertex_buffer = vb,
+			.bindings = bindings,
 		};
 	}
 
-	template<typename PipelineAttrs, typename VtxElem>
+	template<typename PipelineAttrs, typename VtxElem, typename BS, typename... Slots>
 	auto make_draw_params_indexed(
 		const Viewport& vp, 
-		const PipelineState<PipelineAttrs>& ps, 
+		const PipelineState<PipelineAttrs, BS>& ps, 
 		VertexBufferRC<VtxElem> vb, 
-		IndexBufferRC ib
+		IndexBufferRC ib,
+		const BindingSet<Slots...>& bindings = kEmptyBindings
 	) noexcept {
-		return DrawParams<PipelineAttrs, VtxElem> {
+		return DrawParams<PipelineAttrs, VtxElem, BS, Slots...> {
 			.viewport = vp,
 			.pipeline = ps,
 			.vertex_buffer = vb,
 			.index_buffer = ib,
+			.bindings = bindings,
+		};
+	}
+
+	namespace detail {
+		template<typename UserBS, typename PipelineBS>
+		struct DoesUserBindingSetMatch;
+
+		template<typename... UserSlots, typename... PipelineSlots>
+		struct DoesUserBindingSetMatch<BindingSet<UserSlots...>, BindingSet<PipelineSlots...>> {
+			static constexpr bool kValue = (SameAsAny<PipelineSlots, UserSlots...> && ...);
 		};
 	}
 
@@ -118,69 +117,68 @@ namespace minirhi
 		void clear_stencil_buffer() noexcept;
 		void clear_buffer(GLbitfield bufferType, f32 r, f32 g, f32 b, f32 a) noexcept;
 
-		// TODO:
-		// template<typename ConstantType>
-		// void PushConstant(ShaderType shaderType, std::string_view name, ConstantType&& value) noexcept
-		// {
-		// 	u32 selectedShaderProgram = (shaderType == ShaderType::eVertex) ? _vertexShaderProgram : _fragmentShaderProgram;
-		// 	assert(selectedShaderProgram != (u32)(~0) && "Invalid shader program. Set pipeline state first.");
-
-		// 	u32 uniformLocation = glGetUniformLocation(selectedShaderProgram, name.data());
-		// 	assert(uniformLocation != -1 && "Unknowed uniform name.");
-
-		// 	PushConstant(selectedShaderProgram, uniformLocation, std::forward<ConstantType>(value));
-		// }
-
-		void PushConstant(u32 program, u32 location, TextureRC value) noexcept;
-		void PushConstant(u32 program, u32 location, u32 value) noexcept;
-		void PushConstant(u32 program, u32 location, f32 value) noexcept;
-		void PushConstant(u32 program, u32 location, f32 x, f32 y) noexcept;
-		void PushConstant(u32 program, u32 location, const glm::vec3& v) noexcept;
-		void PushConstant(u32 program, u32 location, const glm::vec4& v) noexcept;
-		void PushConstant(u32 program, u32 location, const glm::mat3x3& m) noexcept;
-		void PushConstant(u32 program, u32 location, const glm::mat4x4& m) noexcept;
-
-		template<typename PipelineAttrs, typename VtxElem>
-		void draw(const DrawParams<PipelineAttrs, VtxElem>& params, size_t vertex_count, size_t offset) noexcept {
-			static_assert(TVtxElem<VtxElem>, "Vertex buffer element type must satisfy TVtxElem concept!");
-			static_assert(std::same_as<PipelineAttrs, MakeVertexAttributes<VtxElem>>, "Vertex buffer's vertex attributes does not match the pipeline's vertex attributes!");
-
-			auto& vb = params.vertex_buffer;
-			auto& ib = params.index_buffer;
-			static constexpr auto attrs = get_vtx_attr_array(PipelineAttrs{});
-			setup_pipeline_(
-				attrs, 
-				params.pipeline.rasterizer, 
-				params.viewport, 
-				!vb.is_empty() ? vb.get().handle : kBufferInvalidHandle, 
-				!ib.is_empty() ? ib.get().handle : kBufferInvalidHandle,
-				params.pipeline.shader_program
-			);
-
+		template<typename PipelineAttrs, typename VtxElem, typename BS, typename... Slots>
+		void draw(const DrawParams<PipelineAttrs, VtxElem, BS, Slots...>& params, size_t vertex_count, size_t offset) noexcept {
+			draw_common_setup_(params);
 			draw_internal_(params.pipeline.topology, vertex_count, offset);
 		}
 		
-		template<typename PipelineAttrs, typename VtxElem>
-		void draw_indexed(const DrawParams<PipelineAttrs, VtxElem>& params, size_t index_count, size_t offset) noexcept {
-			static_assert(TVtxElem<VtxElem>, "Vertex buffer element type must satisfy TVtxElem concept!");
-			static_assert(std::same_as<PipelineAttrs, MakeVertexAttributes<VtxElem>>, "Vertex buffer's vertex attributes does not match the pipeline's vertex attributes!");
-		
-			auto& vb = params.vertex_buffer;
-			auto& ib = params.index_buffer;
-			static constexpr auto attrs = get_vtx_attr_array(PipelineAttrs{});
-			setup_pipeline_(
-				attrs, 
-				params.pipeline.rasterizer, 
-				params.viewport, 
-				!vb.is_empty() ? vb.get().handle : kBufferInvalidHandle, 
-				!ib.is_empty() ? ib.get().handle : kBufferInvalidHandle,
-				params.pipeline.shader_program
-			);
-
+		template<typename PipelineAttrs, typename VtxElem, typename BS, typename... Slots>
+		void draw_indexed(const DrawParams<PipelineAttrs, VtxElem, BS, Slots...>& params, size_t index_count, size_t offset) noexcept {
+			draw_common_setup_(params);
 			draw_indexed_internal_(params.pipeline.topology, params.index_buffer.get().handle, index_count, offset);
 		}
 	
 	private:
+		template<template<typename, typename> typename Slot, typename Type, typename Name>
+		void set_binding_(u32 program, const Slot<Type, Name>& v) noexcept {
+			static constexpr FixedString  kName = Name::kValue;
+			if constexpr (std::same_as<Slot<Type, Name>, Texture2DSlot<kName>>) {
+				set_texture2d_binding_impl_(program, std::string_view(kName), v.value);
+				return;
+			} 
+			if constexpr (std::same_as<Slot<Type, Name>, UIntSlot<kName>>) {
+				set_uint_binding_impl_(program, std::string_view(kName), v.value);
+				return;
+			} 
+			if constexpr (std::same_as<Slot<Type, Name>, FloatSlot<kName>>) {
+				set_float_binding_impl_(program, std::string_view(kName), v.value);
+			}
+		}
+
+		void set_texture2d_binding_impl_(u32 program, std::string_view name, u32 texture) noexcept;
+		void set_uint_binding_impl_(u32 program, std::string_view name, u32 value) noexcept;
+		void set_float_binding_impl_(u32 program, std::string_view name, f32 value) noexcept;
+
+
+		template<typename PipelineAttrs, typename VtxElem, typename BS, typename... Slots>
+		void draw_common_setup_(const DrawParams<PipelineAttrs, VtxElem, BS, Slots...>& params) noexcept {
+			static_assert(TVtxElem<VtxElem>, "Vertex buffer element type must satisfy TVtxElem concept!");
+			static_assert(std::same_as<PipelineAttrs, MakeVertexAttributes<VtxElem>>, "Vertex buffer's vertex attributes does not match the pipeline's vertex attributes!");
+			static_assert(detail::DoesUserBindingSetMatch<BindingSet<Slots...>, BS>::kValue, "User-defined BindingSet does not match the pipeline's binding set!");
+		
+			auto& vb = params.vertex_buffer;
+			auto& ib = params.index_buffer;
+			static constexpr auto attrs = get_vtx_attr_array(PipelineAttrs{});
+			setup_pipeline_(
+				attrs, 
+				params.pipeline.rasterizer, 
+				params.viewport, 
+				!vb.is_empty() ? vb.get().handle : kBufferInvalidHandle, 
+				!ib.is_empty() ? ib.get().handle : kBufferInvalidHandle,
+				params.pipeline.shader_program
+			);
+
+			if constexpr (!BS::kIsEmpty) {
+				std::apply(
+					[&](auto&&... slots) {
+						(set_binding_(params.pipeline.shader_program, slots), ...);
+					},
+					params.bindings.slots
+				);
+			}
+		}
+
 		void setup_pipeline_(std::span<const VtxAttrData> attribs, const RasterizerStateDesc& rasterizer, const Viewport& vp, u32 vb, u32 ib, u32 program) noexcept;
 		void draw_internal_(PrimitiveTopologyType type, size_t vertex_count, size_t offset) noexcept;
 		void draw_indexed_internal_(PrimitiveTopologyType type, u32 ib, size_t index_count, size_t offset) noexcept;

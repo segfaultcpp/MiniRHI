@@ -11,7 +11,14 @@
 
 namespace minirhi {
 	namespace glsl {
+		struct TypeNames {
+			static constexpr const char kSampler2D[] = "sampler2D";
+			static constexpr const char kUInt[] = "uint";
+			static constexpr const char kFloat[] = "float";
+		};
+
 		enum class TokenType {
+			eKW_Uniform,
 			eKW_Layout,
 			eKW_Location,
 			eKW_In,
@@ -30,11 +37,11 @@ namespace minirhi {
 			TokenType type;
 
 			static constexpr Token end_of_file() noexcept {
-				return Token{ "", TokenType::eEof };
+				return Token{ "__eof", TokenType::eEof };
 			}
 
 			static constexpr Token unknown() noexcept {
-				return Token{ "", TokenType::eUnknown };
+				return Token{ "__unknown_token", TokenType::eUnknown };
 			}
 
 			constexpr bool operator==(const Token& other) const noexcept {
@@ -82,6 +89,9 @@ namespace minirhi {
 					}
 
 					std::string_view value = make_sv(begin, current);
+					if (value == "uniform") {
+						return Token{ value, TokenType::eKW_Uniform };
+					}
 					if (value == "layout") {
 						return Token{ value, TokenType::eKW_Layout };
 					}
@@ -114,6 +124,7 @@ namespace minirhi {
 				case '=': ++current; return Token{ make_sv(begin, current), TokenType::eEqSign };
 				case ';': ++current; return Token{ make_sv(begin, current), TokenType::eSemicolon };
 				}
+				++current;
 				return Token::unknown();
 			}
 
@@ -149,17 +160,30 @@ namespace minirhi {
 			}
 		};
 
-		consteval std::size_t layout_count(std::string_view code) {
+		consteval std::size_t name_count(std::string_view code, std::string_view name) {
 			std::size_t count = 0;
-			for (std::size_t n = code.find("layout", 0); n != std::string_view::npos; n = code.find("layout", n)) {
-				n += 6;
+			for (std::size_t n = code.find(name, 0); n != std::string_view::npos; n = code.find(name, n)) {
+				n += name.size();
 				++count;
 			}
 			return count;
 		}
 
+		consteval std::size_t layout_count(std::string_view code) {
+			return name_count(code, "layout");
+		}
+
+		consteval std::size_t uniform_count(std::string_view code) {
+			return name_count(code, "uniform");
+		}
+
+		// grammar rule: 'layout' '(' 'location' '=' num ')' ident ident ';'
 		template<std::size_t N>
 		consteval auto parse_input_layout(std::string_view code) {
+			if constexpr (N == 0) {
+				return;
+			}
+
 			const std::size_t off = code.find("layout");
 			const std::string_view code_off = Lexer::make_sv(std::next(code.begin(), off), code.end());
 
@@ -168,7 +192,7 @@ namespace minirhi {
 			std::array<std::string_view, N> attr_types;
 			std::size_t i = 0;
 			
-			while (((token = lexer.next()) != Token::end_of_file()) && (token != Token::unknown())) {
+			while (((token = lexer.next()) != Token::end_of_file()) && (i < N)) {
 				if (token.type == TokenType::eKW_Layout) {
 					if (token = lexer.next(); token.type != TokenType::eL_Paren) {
 						throw "Unexpected token. Expected '('.";
@@ -203,6 +227,75 @@ namespace minirhi {
 			}
 
 			return attr_types;
+		}
+
+		// grammar rule: 'uniform' ident ident ';'
+		template<std::size_t N>
+ 		consteval auto parse_uniforms(std::string_view code) {
+			const std::size_t off = code.find("uniform");
+			const std::string_view code_off = Lexer::make_sv(std::next(code.begin(), off), code.end());
+
+			Lexer lexer{ code_off };
+			Token token{};
+			std::array<std::pair<std::string_view, std::string_view>, N> uniforms;
+			std::size_t i = 0;
+
+			while (((token = lexer.next()) != Token::end_of_file()) && (i < N)) {
+				if (token.type == TokenType::eKW_Uniform) {
+					if (token = lexer.next(); token.type != TokenType::eIdent) {
+						throw "Unexpected token. Expected identifier.";
+					}
+					auto type_name = token.value;
+					if (token = lexer.next(); token.type != TokenType::eIdent) {
+						throw "Unexpected token. Expected identifier.";
+					}
+					auto obj_name = token.value;
+					uniforms[i++] = std::make_pair(type_name, obj_name);
+				}
+			}
+			return uniforms;
+		}
+
+		namespace tests {
+			using namespace std::string_view_literals;
+
+			inline static constexpr FixedString kShader = R"str(
+#version 330 core
+layout (location = 0) in vec2 position;
+// comment 
+// another one
+/*
+* and this one
+*/
+layout (location = 1) in vec3 color;
+uniform uint baz;
+layout (location = 2) in uint color;
+
+out vec3 vert_color;
+
+uniform vec2 foo;
+
+
+out vec2 vert_pos;
+uniform vec3 light_pos;
+)str";
+
+			static_assert(layout_count(kShader) == 3);
+			static_assert(uniform_count(kShader) == 3);
+
+			static_assert(
+				parse_input_layout<layout_count(kShader)>(kShader) ==
+				std::to_array({ "vec2"sv, "vec3"sv, "uint"sv })
+			);
+
+			static_assert(
+				parse_uniforms<uniform_count(kShader)>(kShader) ==
+				std::to_array({ 
+					std::make_pair("uint"sv, "baz"sv),
+					std::make_pair("vec2"sv, "foo"sv), 
+					std::make_pair("vec3"sv, "light_pos"sv),
+				})
+			);
 		}
 	}
 

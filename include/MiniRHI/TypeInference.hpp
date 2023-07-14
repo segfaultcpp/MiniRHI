@@ -4,6 +4,8 @@
 #include "Format.hpp"
 #include "PipelineState.hpp"
 
+#include "Core/Core.hpp"
+
 /*
  *  VERTEX TYPE ATTRIBUTES DEDUCTION
  *
@@ -38,11 +40,6 @@ namespace minirhi
         {
             std::is_pod_v<T>;
             { T{ std::declval<Ty>()... } } -> std::same_as<T>;
-        };
-
-        template<std::size_t I, typename T>
-        struct Indexed {
-            using Type = T;
         };
 
         template<typename T, size_t N>

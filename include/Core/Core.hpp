@@ -141,3 +141,21 @@ template<FixedString Str>
 struct CTString {
 	static constexpr FixedString kValue = Str;
 };
+
+template<std::size_t I, typename T>
+struct Indexed {
+    using Type = T;
+};
+
+namespace details {
+	template<typename T, typename... Args>
+	struct SameAsAny {
+		static constexpr bool value = (std::is_same_v<T, Args> || ...);
+	};
+}
+
+template<typename... Args>
+inline constexpr bool same_as_any_v = details::SameAsAny<Args...>::value;
+
+template<typename... Args>
+concept SameAsAny = same_as_any_v<Args...>;

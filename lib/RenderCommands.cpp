@@ -131,6 +131,18 @@ namespace minirhi
 #endif
 	}
 
+	void RenderCommands::set_texture2d_binding_impl_(u32 program, std::string_view name, u32 texture) noexcept {
+		// TODO: 
+	}
+
+	void RenderCommands::set_uint_binding_impl_(u32 program, std::string_view name, u32 value) noexcept {
+		glProgramUniform1ui(program, glGetUniformLocation(program, name.data()), value);
+	}
+
+	void RenderCommands::set_float_binding_impl_(u32 program, std::string_view name, f32 value) noexcept {
+		glProgramUniform1f(program, glGetUniformLocation(program, name.data()), value);
+	}	
+
 	void RenderCommands::draw_internal_(PrimitiveTopologyType type, size_t vertex_count, size_t offset) noexcept {
 		glBindVertexArray(vao_);
 		glDrawArrays(convert_topology_type(type), offset, vertex_count);
@@ -155,44 +167,4 @@ namespace minirhi
 	// 		glUniform1i(tex.Handle, i);
 	// 	}
 	// }
-
-	void RenderCommands::PushConstant(u32 program, u32 location, u32 value) noexcept
-	{
-		glProgramUniform1ui(program, location, value);
-	}
-
-	void RenderCommands::PushConstant(u32 program, u32 location, f32 value) noexcept
-	{
-		glProgramUniform1f(program, location, value);
-	}
-
-	void RenderCommands::PushConstant(u32 program, u32 location, f32 x, f32 y) noexcept
-	{
-		glProgramUniform2f(program, location, x, y);
-	}
-
-	void RenderCommands::PushConstant(u32 program, u32 location, const glm::vec3& v) noexcept
-	{
-		glProgramUniform3f(program, location, v.x, v.y, v.z);
-	}
-
-	void RenderCommands::PushConstant(u32 program, u32 location, const glm::vec4& v) noexcept
-	{
-		glProgramUniform4f(program, location, v.x, v.y, v.z, v.w);
-	}
-
-	void RenderCommands::PushConstant(u32 program, u32 location, const glm::mat3x3& m) noexcept
-	{
-		glProgramUniformMatrix3fv(program, location, 1, GL_FALSE, glm::value_ptr(m));
-	}
-
-	void RenderCommands::PushConstant(u32 program, u32 location, const glm::mat4x4& m) noexcept
-	{
-		glProgramUniformMatrix4fv(program, location, 1, GL_FALSE, glm::value_ptr(m));
-	}
-
-	void RenderCommands::PushConstant(u32 program, u32 location, TextureRC value) noexcept
-	{
-		glProgramUniform1ui(program, location, value.get().handle);
-	}
 }

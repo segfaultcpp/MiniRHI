@@ -1,6 +1,9 @@
 #pragma once
 #include <array>
 #include <concepts>
+#include <tuple>
+#include <type_traits>
+#include <utility>
 #include <vector>
 #include <span>
 #include <cassert>
@@ -8,7 +11,9 @@
 #include <Core/Core.hpp>
 
 #include "MiniRHI/Format.hpp"
+#include "MiniRHI/PipelineState.hpp"
 #include "MiniRHI/Shader.hpp"
+#include "MiniRHI/Texture.hpp"
 #include "Shader.hpp"
 #include "Format.hpp"
 
@@ -134,39 +139,65 @@ namespace minirhi
 			>
 		);
 	}
-	
-	struct [[deprecated("Not supported anymore. Use VtxAttr and VtxAttrArr instead.")]] VertexAttributeDesc
-	{
-		Format Format_;
-		u32 Stride;
-		u32 Offset;
 
-		VertexAttributeDesc() noexcept = default;
+	template<typename Type, typename Name>
+	struct Slot;
 
-		VertexAttributeDesc(Format format, u32 stride, u32 offset) noexcept
-			: Format_(format)
-			, Stride(stride)
-			, Offset(offset)
+	template<typename Type>
+	struct Slot<Type, CTString<FixedString("")>>;
+
+	template<typename Name>
+	struct Slot<CTString<FixedString(glsl::TypeNames::kSampler2D)>, Name> {
+		u32 value = kInvalidTextureHandle;
+
+		explicit constexpr Slot() noexcept = default;
+		explicit constexpr Slot(u32 texture_handle) noexcept 
+			: value(texture_handle)
 		{}
-
-		VertexAttributeDesc& SetFormat(Format format) noexcept
-		{
-			Format_ = format;
-			return *this;
-		}
-
-		VertexAttributeDesc& SetStride(u32 stride) noexcept
-		{
-			Stride = stride;
-			return *this;
-		}
-
-		VertexAttributeDesc& SetOffset(u32 offset) noexcept
-		{
-			Offset = offset;
-			return *this;
-		}
 	};
+	template<FixedString Name>
+	using Texture2DSlot = Slot<CTString<FixedString(glsl::TypeNames::kSampler2D)>, CTString<Name>>;
+
+	template<typename Name>
+	struct Slot<CTString<FixedString(glsl::TypeNames::kUInt)>, Name> {
+		u32 value = 0;
+
+		explicit constexpr Slot() noexcept = default;
+		explicit constexpr Slot(u32 v) noexcept 
+			: value(v)
+		{}
+	};
+	template<FixedString Name>
+	using UIntSlot = Slot<CTString<FixedString(glsl::TypeNames::kUInt)>, CTString<Name>>;
+
+	template<typename Name>
+	struct Slot<CTString<FixedString(glsl::TypeNames::kFloat)>, Name> {
+		f32 value = 0.f;
+
+		explicit constexpr Slot() noexcept = default;
+		explicit constexpr Slot(f32 v) noexcept 
+			: value(v)
+		{}
+	};
+	template<FixedString Name>
+	using FloatSlot = Slot<CTString<FixedString(glsl::TypeNames::kFloat)>, CTString<Name>>;
+
+	template<typename... Slots>
+	struct BindingSet {
+		using Tuple = std::tuple<Slots...>;
+		static constexpr std::size_t kSlotCount = sizeof...(Slots);
+		static constexpr bool kIsEmpty = kSlotCount == 0;
+		Tuple slots{};
+	};
+
+	template<typename... Slots>
+	constexpr auto make_bindings(Slots&&... slots) noexcept {
+		return BindingSet<Slots...> {
+			.slots = std::make_tuple(std::forward<Slots>(slots)...)
+		};
+	}
+
+	inline static constexpr auto kEmptyBindings = make_bindings();
 
 	namespace detail {
 		template<FixedString Code>
@@ -219,7 +250,7 @@ struct ToVtxAttr_<CTString<FixedString(S)>> { \
 #version 330 core
 layout (location = 0) in vec2 position;
 layout (location = 1) in vec3 color;
-layout (location = 1) in uint color;
+layout (location = 2) in uint color;
 
 out vec3 vert_color;
 
@@ -239,6 +270,55 @@ void main() {
 					>
 				>
 			);
+		}
+
+		template<typename T>
+		struct ConvertToBindingSet;
+
+		template<typename... Slots>
+		struct ConvertToBindingSet<const std::tuple<Slots...>> {
+			using Type = BindingSet<Slots...>;
+		};
+
+		template<FixedString... Codes>
+		consteval auto generate_binding_set_impl() {
+			constexpr auto kArrays = std::make_tuple(::minirhi::glsl::parse_uniforms<::minirhi::glsl::uniform_count(Codes)>(Codes)...);
+
+			constexpr auto kUniforms = [&]<std::size_t... Ns>([[maybe_unused]] std::index_sequence<Ns...>) {
+				std::array<std::pair<std::string_view, std::string_view>, (::minirhi::glsl::uniform_count(Codes) + ...)> ret;
+				std::size_t i = 0;
+				((std::ranges::copy(
+					std::begin(std::get<Ns>(kArrays)), 
+					std::end(std::get<Ns>(kArrays)), 
+					ret.begin() + i), 
+					i += std::size(std::get<Ns>(kArrays))), ...);
+				return ret;
+			}(std::make_index_sequence<sizeof...(Codes)>{});
+
+			constexpr auto kTuple = [&]<std::size_t... Ns>(std::index_sequence<Ns...>) {
+				return std::make_tuple(
+					Slot<
+						CTString<FixedString<kUniforms[Ns].first.size()>(kUniforms[Ns].first)>,
+						CTString<FixedString<kUniforms[Ns].second.size()>(kUniforms[Ns].second)>
+					>{}...
+				);
+			}(std::make_index_sequence<kUniforms.size()>{});
+
+			return typename ConvertToBindingSet<decltype(kTuple)>::Type{};
+		}
+
+		// kostil
+		template<FixedString VS, FixedString FS>
+		consteval auto generate_binding_set() {
+			if constexpr (::minirhi::glsl::uniform_count(VS) == 0 && ::minirhi::glsl::uniform_count(FS) == 0){
+				return kEmptyBindings;
+			} else if constexpr (::minirhi::glsl::uniform_count(VS) == 0) {
+				return generate_binding_set_impl<FS>();
+			} else if constexpr (::minirhi::glsl::uniform_count(FS)) {
+				return generate_binding_set_impl<VS>();
+			} else {
+				return generate_binding_set_impl<VS, FS>();
+			}
 		}
 	}
 
@@ -326,7 +406,7 @@ void main() {
 
 	struct DepthStencilStateDesc {};
 
-	template<typename Attrs>
+	template<typename Attrs, typename BS>
 	struct PipelineState {
 		VtxShaderHandle vs{};
 		FragShaderHandle fs{};
@@ -380,9 +460,12 @@ void main() {
 		}
 	};
 
-	template<FixedString VS ,FixedString FS>
+	template<FixedString VS, FixedString FS>
 	inline auto generate_pipeline_from_shaders(PrimitiveTopologyType topology, const RasterizerStateDesc& rasterizer) noexcept {
-		PipelineState<decltype(detail::generate_input_layout<VS>())> pipeline{
+		PipelineState<
+			decltype(detail::generate_input_layout<VS>()),
+			decltype(detail::generate_binding_set<VS, FS>())
+		> pipeline{
 			ShaderCompiler::compile_from_code<VtxShaderHandle>(VS),
 			ShaderCompiler::compile_from_code<FragShaderHandle>(FS),
 			topology,

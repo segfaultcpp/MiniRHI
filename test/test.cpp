@@ -73,9 +73,10 @@ void main() {
 
 in vec3 vert_color;
 out  vec4 frag_color;
+uniform float blue_comp;
 
 void main() {
-    frag_color = vec4(vert_color, 1.0);
+    frag_color = vec4(vec3(vert_color.xy, blue_comp), 1.0);
 }
 )str";
 
@@ -112,8 +113,12 @@ void main() {
     minirhi::RenderCommands cmd;
     minirhi::Viewport vp{ kScreenWidth, kScreenHeight };
 
-    auto draw_params = minirhi::make_draw_params(vp, pipeline, vb);
-    auto indexed_draw_params = minirhi::make_draw_params_indexed(vp, pipeline, indexed_vb, ib);
+    auto bindings = minirhi::make_bindings(
+        minirhi::FloatSlot<"blue_comp">(0.42f)
+    );
+
+    auto draw_params = minirhi::make_draw_params(vp, pipeline, vb, bindings);
+    auto indexed_draw_params = minirhi::make_draw_params_indexed(vp, pipeline, indexed_vb, ib, bindings);
 
     while(!quit) { 
         while(SDL_PollEvent( &e ) != 0) { 
@@ -122,8 +127,8 @@ void main() {
             }
         }
         cmd.clear_color_buffer(1.0, 0.0, 0.0, 0.0);
+        cmd.draw(draw_params, vertices.size(), 0);
         cmd.draw_indexed(indexed_draw_params, indices.size(), 0);
-        // cmd.draw(draw_params, vertices.size(), 0);
         SDL_GL_SwapWindow(window.ptr);
     }
 
