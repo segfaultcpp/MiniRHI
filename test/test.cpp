@@ -9,13 +9,17 @@
 #include "MiniRHI/PipelineState.hpp"
 #include "MiniRHI/RenderCommands.hpp"
 #include "MiniRHI/Shader.hpp"
+#include "MiniRHI/Texture.hpp"
 #include "MiniRHI/TypeInference.hpp"
+
 #include "sdl/SDL_error.h"
 #include "sdl/SDL_keycode.h"
 #include "sdl/SDL_video.h"
 #include <sdl/SDL.h>
+#include <stb/stb_image.h>
 
 #include <format>
+#include <memory>
 
 static constexpr std::size_t kScreenWidth = 1280;
 static constexpr std::size_t kScreenHeight = 720;
@@ -49,9 +53,41 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     SDL_Event e; 
     bool quit = false; 
     
+    auto deleter = [](stbi_uc* data) noexcept {
+        stbi_image_free(data);
+    };
+    using Image = std::unique_ptr<stbi_uc, decltype(deleter)>;
+
+    auto create_texture = [](std::string_view path){
+        i32 x = 0;
+        i32 y = 0;
+        i32 n = 0;
+        
+        stbi_uc* data = stbi_load(path.data(), &x, &y, &n, 0);
+        if (data == nullptr) {
+            std::cout << std::format("Failed to load image file! Reason: {}\n", stbi_failure_reason());
+            std::abort();
+        }
+        
+        auto texture_resource = Image(data);
+
+        auto texture_format = [&n] {
+            switch (n) {
+            case 3: return minirhi::Format::eRGB8_UInt;
+            case 4: return minirhi::Format::eRGBA8_UInt;
+            default: return minirhi::Format::eUnknown;
+            }
+        }();
+        auto texture_handle = minirhi::make_texture_2d_rc(minirhi::SamplerDesc{}, x, y, texture_format, texture_resource.get());
+        return std::make_pair(std::move(texture_resource), std::move(texture_handle));
+    };
+    auto[_1, texture1] = create_texture("resources/images/logo.png");
+    auto[_2, texture2] = create_texture("resources/images/awesomeface.png");
+
     struct Vertex {
         std::array<f32, 2> position;
         std::array<f32, 3> color;
+        std::array<f32, 2> tex_coord;
     };
 
     using Attrs = minirhi::MakeVertexAttributes<Vertex>;
@@ -60,23 +96,31 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
 #version 330 core
 layout (location = 0) in vec2 position;
 layout (location = 1) in vec3 color;
+layout (location = 2) in vec2 tex_coord;
 
 out vec3 vert_color;
+out vec2 vert_tex_coord;
 
 void main() {
     gl_Position = vec4(position, 0.0, 1.0);
     vert_color = color;
+    vert_tex_coord = tex_coord;
 })str";
 
     static constexpr FixedString kFS = R"str(
 #version 330 core
 
 in vec3 vert_color;
+in vec2 vert_tex_coord;
+
 out  vec4 frag_color;
+
 uniform float blue_comp;
+uniform sampler2D tex1;
+uniform sampler2D tex2;
 
 void main() {
-    frag_color = vec4(vec3(vert_color.xy, blue_comp), 1.0);
+    frag_color = mix(texture(tex1, vert_tex_coord), texture(tex2, vert_tex_coord), 0.42)* vec4(vec3(vert_color.xy, blue_comp), 1.0);
 }
 )str";
 
@@ -86,20 +130,20 @@ void main() {
     );
 
     static constexpr std::array vertices = {
-        Vertex { {-1.f, -1.f}, {1.f, 0.f, 0.f} },
-        Vertex { {0.f, -1.f}, {0.f, 1.f, 0.f} },
-        Vertex { {-0.5f, 1.f}, {0.f, 0.f, 1.f} },
+        Vertex { {-1.f, -1.f}, {1.f, 0.f, 0.f}, {0.f, 1.f} },
+        Vertex { {0.f, -1.f}, {0.f, 1.f, 0.f}, {1.f, 1.f} },
+        Vertex { {-0.5f, 1.f}, {0.f, 0.f, 1.f}, {0.5f, 0.f} },
 
-        Vertex { {0.f, 1.f}, {1.f, 1.f, 0.f} },
-        Vertex { {1.f, 1.f}, {0.f, 1.f, 1.f} },
-        Vertex { {0.5f, -1.f}, {1.f, 0.f, 1.f} },
+        Vertex { {0.f, 1.f}, {1.f, 1.f, 0.f}, {0.f, 0.f} },
+        Vertex { {1.f, 1.f}, {0.f, 1.f, 1.f}, {1.f, 0.f} },
+        Vertex { {0.5f, -1.f}, {1.f, 0.f, 1.f}, {0.5f, 1.f} },
     };
 
     static constexpr std::array indexed_vertices = {
-        Vertex { {-0.5f, -0.5f}, {1.f, 0.f, 0.f} },
-        Vertex { {0.5f, -0.5f}, {0.f, 1.f, 0.f} },
-        Vertex { {-0.5f, 0.5f}, {0.f, 0.f, 1.f} },
-        Vertex { {0.5f, 0.5f}, {1.f, 1.f, 0.f} },
+        Vertex { {-0.5f, -0.5f}, {1.f, 0.f, 0.f}, {0.f, 1.f} },
+        Vertex { {0.5f, -0.5f}, {0.f, 1.f, 0.f}, {1.f, 1.f} },
+        Vertex { {-0.5f, 0.5f}, {0.f, 0.f, 1.f}, {0.f, 0.f} },
+        Vertex { {0.5f, 0.5f}, {1.f, 1.f, 0.f}, {1.f, 0.f} },
     };
 
     static constexpr std::array indices = {
@@ -114,7 +158,9 @@ void main() {
     minirhi::Viewport vp{ kScreenWidth, kScreenHeight };
 
     auto bindings = minirhi::make_bindings(
-        minirhi::FloatSlot<"blue_comp">(0.42f)
+        minirhi::FloatSlot<"blue_comp">(0.42f),
+        minirhi::Texture2DSlot<"tex1">(texture1.get().handle),
+        minirhi::Texture2DSlot<"tex2">(texture2.get().handle)
     );
 
     auto draw_params = minirhi::make_draw_params(vp, pipeline, vb, bindings);

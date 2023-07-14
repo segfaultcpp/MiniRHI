@@ -22,7 +22,7 @@ namespace minirhi
 	enum class PrimitiveTopologyType {
 		ePoint,
 		eLine,
-		eTriangle, // do we need more? 
+		eTriangle, 
 		eCount,
 	};
 

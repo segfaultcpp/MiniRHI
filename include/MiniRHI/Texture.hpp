@@ -74,7 +74,6 @@ namespace minirhi {
 	u32 convert_address_mode(TextureAddressMode mode) noexcept;
 
 	enum class TextureFilter {
-		eNone,
 		eNearest,
 		eLinear,
 	};
@@ -96,8 +95,8 @@ namespace minirhi {
 			, u(TextureAddressMode::eWrap)
 			, v(TextureAddressMode::eWrap)
 			, w(TextureAddressMode::eWrap)
-			, min_filter(TextureFilter::eNone)
-			, mag_filter(TextureFilter::eNone)
+			, min_filter(TextureFilter::eLinear)
+			, mag_filter(TextureFilter::eLinear)
 		{}
 
 		SamplerDesc(
@@ -137,7 +136,7 @@ namespace minirhi {
 		explicit Texture() noexcept = default;
 
 		explicit Texture(const TextureDesc& tex_desc, const SamplerDesc& tex_sampler) noexcept
-			: handle(detail::create_texture_impl_(desc, sampler))
+			: handle(detail::create_texture_impl_(tex_desc, tex_sampler))
 			, desc(tex_desc)
 			, sampler(tex_sampler)
 		{}
@@ -149,7 +148,7 @@ namespace minirhi {
 		return TextureRC{ desc, sampler };
 	}
 
-	inline TextureRC make_texture_2d_rc(const SamplerDesc& sampler, u32 w, u32 h, Format format, const u8* data = nullptr, bool enable_mips = false) noexcept {
+	inline TextureRC make_texture_2d_rc(const SamplerDesc& sampler, u32 w, u32 h, Format format, const u8* data, bool enable_mips = false) noexcept {
 		return TextureRC{ TextureDesc::texture_2D(w, h, format, data, enable_mips), sampler };
 	}
 }

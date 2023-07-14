@@ -108,6 +108,7 @@ namespace minirhi
 	class RenderCommands {
 	private:
 		u32 vao_ = std::numeric_limits<u32>::max();
+		std::size_t bound_texture_count_ = 0;
 
 	public:
 		explicit RenderCommands() noexcept;

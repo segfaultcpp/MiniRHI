@@ -132,7 +132,10 @@ namespace minirhi
 	}
 
 	void RenderCommands::set_texture2d_binding_impl_(u32 program, std::string_view name, u32 texture) noexcept {
-		// TODO: 
+		glUniform1i(glGetUniformLocation(program, name.data()), GLint(bound_texture_count_));
+		glActiveTexture(GL_TEXTURE0 + bound_texture_count_);
+		glBindTexture(GL_TEXTURE_2D, texture);
+		bound_texture_count_++;
 	}
 
 	void RenderCommands::set_uint_binding_impl_(u32 program, std::string_view name, u32 value) noexcept {
@@ -147,12 +150,14 @@ namespace minirhi
 		glBindVertexArray(vao_);
 		glDrawArrays(convert_topology_type(type), offset, vertex_count);
 		glBindVertexArray(0);
+		bound_texture_count_ = 0;
 	}
 
 	void RenderCommands::draw_indexed_internal_(PrimitiveTopologyType type, u32 ib, size_t index_count, size_t offset) noexcept {
 		glBindVertexArray(vao_);
 		glDrawElements(convert_topology_type(type), index_count, GL_UNSIGNED_INT, (void*)offset);
 		glBindVertexArray(0);
+		bound_texture_count_ = 0;
 	}
 
 	// TODO:
