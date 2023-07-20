@@ -12,9 +12,22 @@
 namespace minirhi {
 	namespace glsl {
 		struct TypeNames {
-			static constexpr const char kSampler2D[] = "sampler2D";
+			// Scalars
 			static constexpr const char kUInt[] = "uint";
 			static constexpr const char kFloat[] = "float";
+
+			// Samplers
+			static constexpr const char kSampler2D[] = "sampler2D";
+
+			// Vectors
+			static constexpr const char kVec2[] = "vec2";
+			static constexpr const char kVec3[] = "vec3";
+			static constexpr const char kVec4[] = "vec4";
+
+			// Matrices
+			static constexpr const char kMat2[] = "mat2";
+			static constexpr const char kMat3[] = "mat3";
+			static constexpr const char kMat4[] = "mat4";
 		};
 
 		enum class TokenType {

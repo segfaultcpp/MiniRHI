@@ -51,6 +51,21 @@ namespace minirhi
 		}
 	}
 
+	static GLenum convert_depth_func(DepthFunc func) noexcept {
+		switch (func) {
+		case DepthFunc::eAlways: return GL_ALWAYS;
+		case DepthFunc::eNever: return GL_NEVER;
+		case DepthFunc::eEq: return GL_EQUAL;
+		case DepthFunc::eGr: return GL_GREATER;
+		case DepthFunc::eGr_Eq: return GL_GEQUAL;
+		case DepthFunc::eLe: return GL_LESS;
+		case DepthFunc::eLe_Eq: return GL_LEQUAL;
+		case DepthFunc::eNot_Eq: return GL_NOTEQUAL;
+		}
+		// TODO: Warn about unknown function
+		return GL_LESS;
+	}
+
 	RenderCommands make_render_commands() noexcept {
 		u32 vao = 0;
 		glGenVertexArrays(1, &vao); // OpenGL requires VAO for drawing
@@ -81,10 +96,16 @@ namespace minirhi
 		glClear(buffer_type);
 	}
 
-	void RenderCommands::setup_pipeline_(std::span<const VtxAttrData> attribs, const RasterizerStateDesc& rasterizer, const Viewport& vp, u32 vb, u32 ib, u32 program) noexcept {
+	void RenderCommands::setup_pipeline_(std::span<const VtxAttrData> attribs, const DepthStencilDesc& depth_stencil, const RasterizerStateDesc& rasterizer, const Viewport& vp, u32 vb, u32 ib, u32 program) noexcept {
 		assert(vao_ != std::numeric_limits<u32>::max() && "Use of invalid render commands!");
 		
 		glViewport(GLint(vp.x), GLint(vp.y), GLint(vp.width), GLint(vp.height));
+
+		if (depth_stencil.enable_depth) {
+			glEnable(GL_DEPTH_TEST);
+			glDepthMask(GLboolean(depth_stencil.depth_mask == DepthMask::eAll));
+			glDepthFunc(convert_depth_func(depth_stencil.depth_func));
+		}
 
 		glUseProgram(program);
 		if (vb != kBufferInvalidHandle) {
@@ -157,18 +178,27 @@ namespace minirhi
 		glProgramUniform1f(program, glGetUniformLocation(program, name.data()), value);
 	}	
 
+	void RenderCommands::set_mat4_binding_impl_(u32 program, std::string_view name, const glm::mat4& value) noexcept {
+		glUniformMatrix4fv(glGetUniformLocation(program, name.data()), 1, GL_FALSE, glm::value_ptr(value));
+	}
+
 	void RenderCommands::draw_internal_(PrimitiveTopologyType type, size_t vertex_count, size_t offset) noexcept {
 		glBindVertexArray(vao_);
 		glDrawArrays(convert_topology_type(type), offset, vertex_count);
-		glBindVertexArray(0);
-		bound_texture_count_ = 0;
 	}
 
 	void RenderCommands::draw_indexed_internal_(PrimitiveTopologyType type, u32 ib, size_t index_count, size_t offset) noexcept {
 		glBindVertexArray(vao_);
 		glDrawElements(convert_topology_type(type), index_count, GL_UNSIGNED_INT, (void*)offset);
+	}
+
+	void RenderCommands::draw_end_() noexcept {
 		glBindVertexArray(0);
 		bound_texture_count_ = 0;
+
+		glDepthFunc(GL_LESS);
+		glDepthMask(GL_TRUE);
+		glDisable(GL_DEPTH_TEST);
 	}
 
 	// TODO:

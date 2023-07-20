@@ -13,7 +13,7 @@
 #include <format>
 #include <chrono>
 
-i32 App::init(std::string_view title, u32 width, u32 height) noexcept {
+i32 App::init() noexcept {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         return -1;
     }
@@ -27,7 +27,7 @@ i32 App::init(std::string_view title, u32 width, u32 height) noexcept {
             std::cerr << std::format("Couldn't create window!\nReason: {}\n", SDL_GetError());
         };
     auto window = make_non_null(
-        SDL_CreateWindow(title.data(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN), 
+        SDL_CreateWindow(title_.data(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, i32(width_), i32(height_), SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN), 
         sdl_error_handler
     );
     window_ = window.ptr;

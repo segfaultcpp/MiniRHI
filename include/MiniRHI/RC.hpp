@@ -4,43 +4,51 @@
 
 #include <Core/Core.hpp>
 #include <type_traits>
+#include <xtr1common>
 
 namespace minirhi {
 	template<typename Res, auto Destroy = Res::destroy>
 		requires std::is_trivially_copyable_v<Res> && std::invocable<decltype(Destroy), Res&>
 	class RC {
 	private:
-		size_t* _refCount = nullptr;
+		size_t* ref_count_ = nullptr;
 		Res _handle;
 
 	public:
 		explicit constexpr RC() noexcept = default;
 
-		template<typename... Args>
+		template<typename... Args> requires std::bool_constant<sizeof...(Args) != 0>::value
 		explicit constexpr RC(Args&&... args) noexcept
-			: _refCount(new size_t(1u))
+			: ref_count_(new size_t(1u))
 			, _handle(std::forward<Args>(args)...)
 		{}
 
 		constexpr RC(const RC& rhs) noexcept
-			: _refCount(rhs._refCount)
+			: ref_count_(rhs.ref_count_)
 			, _handle(rhs._handle)
 		{
-			if (_refCount != nullptr)
-			{
-				++(*_refCount);
+
+			if constexpr (!std::is_constant_evaluated()) {
+				assert(rhs.ref_count_ != nullptr && "Cannot copy invalid RC object.");
 			}
+			++(*ref_count_);
 		}
 
 		constexpr RC& operator=(const RC& rhs) noexcept {
-			if (_refCount != nullptr) {
-				--(*_refCount);
+			if (this == &rhs || ref_count_ == rhs.ref_count_) {
+				return *this;
 			}
 
-			// TODO: RE_ASSERT(rhs._refCount != nullptr, "Cannot copy null ref.");
+			if (ref_count_ != nullptr) {
+				--(*ref_count_);
+			}
+			
+			if constexpr (!std::is_constant_evaluated()) {
+				assert(rhs.ref_count_ != nullptr && "Cannot copy invalid RC object.");
+			}
 
-			_refCount = rhs._refCount;
-			++(*_refCount);
+			ref_count_ = rhs.ref_count_;
+			++(*ref_count_);
 
 			_handle = rhs._handle;
 
@@ -48,65 +56,79 @@ namespace minirhi {
 		}
 
 		constexpr RC(RC&& rhs) noexcept
-			: _refCount(rhs._refCount)
+			: ref_count_(rhs.ref_count_)
 			, _handle(std::move(rhs._handle))
 		{
-			rhs._refCount = nullptr;
+			if constexpr (!std::is_constant_evaluated()) {
+				assert(rhs.ref_count_ != nullptr && "Cannot move invalid RC object.");
+			}
+			rhs.ref_count_ = nullptr;
 		}
 
 		constexpr RC& operator=(RC&& rhs) noexcept {
-			if (_refCount == rhs._refCount) {
-				rhs._refCount = nullptr;
+			if (this == &rhs) {
+				return *this;
+			}
+			if constexpr (!std::is_constant_evaluated()) {
+				assert(rhs.ref_count_ != nullptr && "Cannot move invalid RC object.");
+			}
+			
+			if (ref_count_ == rhs.ref_count_) {
+				--(*ref_count_);
+				rhs.ref_count_ = nullptr;
 				return *this;
 			}
 
-			--(*_refCount);
-			_refCount = rhs._refCount;
+			if (ref_count_ != nullptr) {
+				--(*ref_count_);
+			}
+			ref_count_ = rhs.ref_count_;
 			_handle = std::move(rhs._handle);
 
-			rhs._refCount = nullptr;
+			rhs.ref_count_ = nullptr;
 
 			return *this;
 		}
 
 		constexpr ~RC() noexcept {
-			if (_refCount == nullptr) {
+			if (ref_count_ == nullptr) {
 				return;
 			}
 
-			--(*_refCount);
+			--(*ref_count_);
 
-			if (*_refCount == 0u) {
+			if (*ref_count_ == 0u) {
 				Destroy(_handle);
-				delete _refCount;
-				_refCount = nullptr;
+				delete ref_count_;
 			}
+			ref_count_ = nullptr;
 		}
 
 		Res* operator->() noexcept {
+			assert(ref_count_ != nullptr && "Cannot access invalid RC object.");
 			return &_handle;
 		}
 
-		template<typename... Args>
+		template<typename... Args> requires std::bool_constant<sizeof...(Args) != 0>::value
 		constexpr void reset(Args&&... args) noexcept {
 			::new (&_handle) Res{ std::forward<Args>(args)... };
 
-			if (_refCount != nullptr) {
-				if (*_refCount == 1u)
+			if (ref_count_ != nullptr) {
+				if (*ref_count_ == 1u)
 				{
-					delete _refCount;
+					delete ref_count_;
 				}
 				else
 				{
-					--(*_refCount);
+					--(*ref_count_);
 				}
 			}
-			_refCount = new size_t(1u);
+			ref_count_ = new size_t(1u);
 		}
 
 		[[nodiscard]] 
 		constexpr size_t get_ref_count() const noexcept {
-			return _refCount != nullptr ? *_refCount : 0u;
+			return ref_count_ != nullptr ? *ref_count_ : 0u;
 		}
 
 		[[nodiscard]]
@@ -121,8 +143,7 @@ namespace minirhi {
 
 		[[nodiscard]] 
 		constexpr bool is_empty() const noexcept {
-			return _refCount == nullptr;
+			return ref_count_ == nullptr;
 		}
-
 	};
 }
