@@ -16,7 +16,7 @@ target_include_directories(MiniRHILib PUBLIC "${CMAKE_SOURCE_DIR}/include"
 if(${ANDROID_ENABLE})
     target_compile_options(MiniRHILib PRIVATE -static -pedantic -DANDROID -fPIC)
     target_link_options(MiniRHILib PRIVATE -s -static -static-libstdc++ -lc++_static -lc++abi)
-else()
+elseif(${WIN32})
     target_link_libraries(MiniRHILib PRIVATE "${MINIRHI_3RDPARTY_DIR}/lib/glew/glew32.lib" PRIVATE OpenGL32.lib)
 endif()
 
