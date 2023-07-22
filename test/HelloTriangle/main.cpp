@@ -11,7 +11,7 @@
 #include "MiniRHI/Shader.hpp"
 #include "MiniRHI/Texture.hpp"
 #include "MiniRHI/TypeInference.hpp"
-
+#define SDL_MAIN_HANDLED
 #include "sdl/SDL_error.h"
 #include "sdl/SDL_keycode.h"
 #include "sdl/SDL_video.h"
@@ -65,16 +65,16 @@ void main() {
     };
 
     using Pipeline = decltype(
-        minirhi::generate_pipeline_from_shaders<kVS, kFS>(
-            minirhi::PrimitiveTopologyType::eCount, 
-            minirhi::RasterizerStateDesc{}
-        )
-    );
+            minirhi::generate_pipeline_from_shaders<kVS, kFS>(
+                minirhi::PrimitiveTopologyType::eCount, 
+                minirhi::RasterizerStateDesc{}
+                )
+            );
 
     Pipeline pipeline_;
     minirhi::VertexBufferRC<Vertex> vb_;
     minirhi::RenderCommands cmds_;
-public:
+    public:
     HelloTriangle() noexcept = default;
     ~HelloTriangle() noexcept override = default;
 
@@ -83,25 +83,25 @@ public:
         assert(code == 0);
 
         pipeline_ = minirhi::generate_pipeline_from_shaders<kVS, kFS>(
-            minirhi::PrimitiveTopologyType::eTriangle, 
-            minirhi::RasterizerStateDesc{}
-        );
+                minirhi::PrimitiveTopologyType::eTriangle, 
+                minirhi::RasterizerStateDesc{}
+                );
 
         vb_.reset(std::span<const Vertex>(vertices.begin(), vertices.end()));
         cmds_ = minirhi::make_render_commands();
         return 0;
     }
 
-    void render() noexcept override {
-        minirhi::Viewport vp{ kScreenWidth, kScreenHeight };
-        auto draw_params = minirhi::make_draw_params(vp, pipeline_, vb_);
-        
-        cmds_.clear_color_buffer(1.0, 0.0, 0.0, 0.0);
-        cmds_.draw(draw_params, vertices.size(), 0);
-    }
+void render() noexcept override {
+    minirhi::Viewport vp{ kScreenWidth, kScreenHeight };
+    auto draw_params = minirhi::make_draw_params(vp, pipeline_, vb_);
+
+    cmds_.clear_color_buffer(1.0, 0.0, 0.0, 0.0);
+    cmds_.draw(draw_params, vertices.size(), 0);
+}
 };
 
-int SDL_main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
+int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
     HelloTriangle app;
     app.init("HelloTriangle", kScreenWidth, kScreenHeight);
     app.run();
