@@ -12,7 +12,7 @@
 #include <format>
 #include <chrono>
 
-i32 App::init(std::string_view title, u32 width, u32 height) noexcept {
+i32 App::init() noexcept {
     SDL_LogSetAllPriority(SDL_LOG_PRIORITY_DEBUG);
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         return -1;

@@ -3,12 +3,11 @@ target_include_directories(MiniRHITestHelloTriangle PRIVATE "${CMAKE_SOURCE_DIR}
     PRIVATE "${MINIRHI_3RDPARTY_DIR}/include"
     PRIVATE "${CMAKE_SOURCE_DIR}/test/Support")
 if(WIN32)
-target_link_libraries(MiniRHITestHelloTriangle 
-    PRIVATE MiniRHILib
-    PRIVATE "${MINIRHI_3RDPARTY_DIR}/lib/sdl/SDL2.lib"
-    PRIVATE "${MINIRHI_3RDPARTY_DIR}/lib/sdl/SDL2main.lib"
-<<<<<<< HEAD
-    PRIVATE MiniRHITestSupportLib)
+    target_link_libraries(MiniRHITestHelloTriangle 
+        PRIVATE MiniRHILib
+        PRIVATE "${MINIRHI_3RDPARTY_DIR}/lib/sdl/SDL2.lib"
+        PRIVATE "${MINIRHI_3RDPARTY_DIR}/lib/sdl/SDL2main.lib"
+        PRIVATE MiniRHITestSupportLib)
 elseif(UNIX)
     find_package(GLEW 2.0 REQUIRED)
     find_package(OpenGL REQUIRED)
@@ -21,6 +20,3 @@ elseif(UNIX)
         PRIVATE MiniRHITestSupportLib)
 endif()
 target_compile_definitions(MiniRHITestHelloTriangle PRIVATE STB_IMAGE_IMPLEMENTATION STBI_FAILURE_USERMSG)
-=======
-    PRIVATE MiniRHITestSupportLib)
->>>>>>> origin/main

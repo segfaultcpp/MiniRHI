@@ -4,7 +4,6 @@
 
 #include <Core/Core.hpp>
 #include <type_traits>
-#include <xtr1common>
 
 namespace minirhi {
 	template<typename Res, auto Destroy = Res::destroy>

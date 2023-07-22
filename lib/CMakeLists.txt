@@ -21,7 +21,7 @@ elseif(UNIX)
     find_package(GLEW 2.0 REQUIRED)
     find_package(X11 REQUIRED)
     target_link_libraries(MiniRHILib PRIVATE ${GLEW_LIBRARIES} ${SDL2_LIBRARIES} ${X11_LIBRARIES})
-elseif(${WIN32})
+elseif(WIN32)
     target_link_libraries(MiniRHILib PRIVATE "${MINIRHI_3RDPARTY_DIR}/lib/glew/glew32.lib" PRIVATE OpenGL32.lib)
 endif()
 
