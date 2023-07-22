@@ -13,8 +13,16 @@ protected:
     void* gl_context_ = nullptr;
     SDL_Surface* surface_ = nullptr;
 
+    std::string_view title_;
+    u32 width_;
+    u32 height_;
+
 public:
-    App() noexcept = default;
+    App(std::string_view title, u32 width, u32 height) noexcept
+        : title_(title)
+        , width_(width)
+        , height_(height)
+    {}
     
     App(const App&) = delete;
     App(App&&) = delete;
@@ -24,7 +32,7 @@ public:
 
     virtual ~App() noexcept;
 
-    virtual i32 init(std::string_view title, u32 width, u32 height) noexcept;
+    virtual i32 init() noexcept;
     void run() noexcept;
     virtual void render() noexcept {}
     virtual void update(f32 delta) noexcept {}

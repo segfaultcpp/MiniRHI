@@ -157,12 +157,14 @@ namespace minirhi
 		void draw(const DrawParams<PipelineAttrs, VtxElem, BS, Slots...>& params, size_t vertex_count, size_t offset) noexcept {
 			draw_common_setup_(params);
 			draw_internal_(params.pipeline.topology, vertex_count, offset);
+			draw_end_();
 		}
 		
 		template<typename PipelineAttrs, typename VtxElem, typename BS, typename... Slots>
 		void draw_indexed(const DrawParams<PipelineAttrs, VtxElem, BS, Slots...>& params, size_t index_count, size_t offset) noexcept {
 			draw_common_setup_(params);
 			draw_indexed_internal_(params.pipeline.topology, params.index_buffer.get().handle, index_count, offset);
+			draw_end_();
 		}
 	
 	private:
@@ -180,12 +182,15 @@ namespace minirhi
 			if constexpr (std::same_as<Slot<Type, Name>, FloatSlot<kName>>) {
 				set_float_binding_impl_(program, std::string_view(kName), v.value);
 			}
+			if constexpr (std::same_as<Slot<Type, Name>, Mat4Slot<kName>>) {
+				set_mat4_binding_impl_(program, std::string_view(kName), v.value);
+			}
 		}
 
 		void set_texture2d_binding_impl_(u32 program, std::string_view name, u32 texture) noexcept;
 		void set_uint_binding_impl_(u32 program, std::string_view name, u32 value) noexcept;
 		void set_float_binding_impl_(u32 program, std::string_view name, f32 value) noexcept;
-
+		void set_mat4_binding_impl_(u32 program, std::string_view name, const glm::mat4& value) noexcept;
 
 		template<typename PipelineAttrs, typename VtxElem, typename BS, typename... Slots>
 		void draw_common_setup_(const DrawParams<PipelineAttrs, VtxElem, BS, Slots...>& params) noexcept {
@@ -198,6 +203,7 @@ namespace minirhi
 			static constexpr auto attrs = get_vtx_attr_array(PipelineAttrs{});
 			setup_pipeline_(
 				attrs, 
+				params.pipeline.depth_stencil,
 				params.pipeline.rasterizer, 
 				params.viewport, 
 				!vb.is_empty() ? vb.get().handle : kBufferInvalidHandle, 
@@ -215,9 +221,10 @@ namespace minirhi
 			}
 		}
 
-		void setup_pipeline_(std::span<const VtxAttrData> attribs, const RasterizerStateDesc& rasterizer, const Viewport& vp, u32 vb, u32 ib, u32 program) noexcept;
+		void setup_pipeline_(std::span<const VtxAttrData> attribs, const DepthStencilDesc& depth_stencil, const RasterizerStateDesc& rasterizer, const Viewport& vp, u32 vb, u32 ib, u32 program) noexcept;
 		void draw_internal_(PrimitiveTopologyType type, size_t vertex_count, size_t offset) noexcept;
 		void draw_indexed_internal_(PrimitiveTopologyType type, u32 ib, size_t index_count, size_t offset) noexcept;
+		void draw_end_() noexcept;
 
 		void set_rasterizer_state_(const RasterizerStateDesc& rs) noexcept;
 	};

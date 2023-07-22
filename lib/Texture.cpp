@@ -39,6 +39,10 @@ namespace minirhi {
 		switch (filter) {
 		case TextureFilter::eLinear: return GL_LINEAR;
 		case TextureFilter::eNearest: return GL_NEAREST;
+		case TextureFilter::eNearest_MipMapNearest: return GL_NEAREST_MIPMAP_NEAREST;
+		case TextureFilter::eNearest_MipMapLinear: return GL_NEAREST_MIPMAP_LINEAR;
+		case TextureFilter::eLinear_MipMapNearest: return GL_LINEAR_MIPMAP_NEAREST;
+		case TextureFilter::eLinear_MipMapLinear: return GL_LINEAR_MIPMAP_LINEAR;
 		default: return 0;
 		}
 	}
@@ -55,6 +59,7 @@ namespace minirhi {
 			glTexParameteri(target, GL_TEXTURE_WRAP_S, GLint(convert_address_mode(sampler.u)));
 			glTexParameteri(target, GL_TEXTURE_WRAP_T, GLint(convert_address_mode(sampler.w)));
 
+			assert(u32(sampler.mag_filter) < u32(TextureFilter::eNearest_MipMapNearest) && "SamplerDesc::mag_filter only accepts TextureFilter::eNeares or TextureFilter::eLinear.");
 			glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GLint(convert_texture_filter(sampler.min_filter)));
 			glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GLint(convert_texture_filter(sampler.mag_filter)));
 

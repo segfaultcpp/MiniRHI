@@ -76,6 +76,11 @@ namespace minirhi {
 	enum class TextureFilter {
 		eNearest,
 		eLinear,
+
+		eNearest_MipMapNearest,
+		eLinear_MipMapNearest,
+		eNearest_MipMapLinear,
+		eLinear_MipMapLinear,
 	};
 
 	u32 convert_texture_filter(TextureFilter filter) noexcept;

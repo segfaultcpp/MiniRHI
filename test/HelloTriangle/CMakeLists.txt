@@ -7,6 +7,7 @@ target_link_libraries(MiniRHITestHelloTriangle
     PRIVATE MiniRHILib
     PRIVATE "${MINIRHI_3RDPARTY_DIR}/lib/sdl/SDL2.lib"
     PRIVATE "${MINIRHI_3RDPARTY_DIR}/lib/sdl/SDL2main.lib"
+<<<<<<< HEAD
     PRIVATE MiniRHITestSupportLib)
 elseif(UNIX)
     find_package(GLEW 2.0 REQUIRED)
@@ -20,3 +21,6 @@ elseif(UNIX)
         PRIVATE MiniRHITestSupportLib)
 endif()
 target_compile_definitions(MiniRHITestHelloTriangle PRIVATE STB_IMAGE_IMPLEMENTATION STBI_FAILURE_USERMSG)
+=======
+    PRIVATE MiniRHITestSupportLib)
+>>>>>>> origin/main

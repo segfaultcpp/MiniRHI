@@ -16,6 +16,7 @@
 #include "MiniRHI/Texture.hpp"
 #include "Shader.hpp"
 #include "Format.hpp"
+#include "glm/ext/matrix_float4x4.hpp"
 
 namespace minirhi
 {
@@ -182,12 +183,51 @@ namespace minirhi
 	template<FixedString Name>
 	using FloatSlot = Slot<CTString<FixedString(glsl::TypeNames::kFloat)>, CTString<Name>>;
 
+	template<typename Name>
+	struct Slot<CTString<FixedString(glsl::TypeNames::kMat4)>, Name> {
+		glm::mat4 value;
+
+		explicit constexpr Slot() noexcept = default;
+		explicit constexpr Slot(const glm::mat4& v) noexcept
+			: value(v)
+		{}
+	};
+	template<FixedString Name>
+	using Mat4Slot = Slot<CTString<FixedString(glsl::TypeNames::kMat4)>, CTString<Name>>;
+
 	template<typename... Slots>
 	struct BindingSet {
 		using Tuple = std::tuple<Slots...>;
 		static constexpr std::size_t kSlotCount = sizeof...(Slots);
 		static constexpr bool kIsEmpty = kSlotCount == 0;
 		Tuple slots{};
+
+		template<typename T>
+		auto& get_slot() noexcept {
+			return std::get<T>(slots);
+		}
+
+		template<typename T>
+		[[nodiscard]]
+		const auto& get_slot() const noexcept {
+			return std::get<T>(slots);
+		}
+
+#define MINIRHI_DECLARE_BINDING_SLOT_GETTER_INLINED_(Type, Name) \
+template<FixedString Uniform>\
+Type<Uniform>& get_##Name##_slot() noexcept { \
+	return get_slot<Type<Uniform>>(); \
+} \
+template<FixedString Uniform>\
+const Type<Uniform>& get_##Name##_slot() const noexcept { \
+	return get_slot<Type<Uniform>>(); \
+}
+
+		MINIRHI_DECLARE_BINDING_SLOT_GETTER_INLINED_(Texture2DSlot, texture2d);
+		MINIRHI_DECLARE_BINDING_SLOT_GETTER_INLINED_(Mat4Slot, mat4);
+		MINIRHI_DECLARE_BINDING_SLOT_GETTER_INLINED_(UIntSlot, uint);
+		MINIRHI_DECLARE_BINDING_SLOT_GETTER_INLINED_(FloatSlot, float);
+
 	};
 
 	template<typename... Slots>
@@ -314,7 +354,7 @@ void main() {
 				return kEmptyBindings;
 			} else if constexpr (::minirhi::glsl::uniform_count(VS) == 0) {
 				return generate_binding_set_impl<FS>();
-			} else if constexpr (::minirhi::glsl::uniform_count(FS)) {
+			} else if constexpr (::minirhi::glsl::uniform_count(FS) == 0) {
 				return generate_binding_set_impl<VS>();
 			} else {
 				return generate_binding_set_impl<VS, FS>();
@@ -404,13 +444,34 @@ void main() {
 		}
 	};
 
-	struct DepthStencilStateDesc {};
+	enum class DepthMask : u8 {
+		eZero,
+		eAll,
+	};
+
+	enum class DepthFunc : u8 {
+		eAlways,
+		eNever,
+		eEq,
+		eLe,
+		eGr,
+		eGr_Eq,
+		eLe_Eq,
+		eNot_Eq,
+	};
+
+	struct DepthStencilDesc {
+		bool enable_depth = false;
+		DepthMask depth_mask = DepthMask::eAll;
+		DepthFunc depth_func = DepthFunc::eLe;
+	};
 
 	template<typename Attrs, typename BS>
 	struct PipelineState {
 		VtxShaderHandle vs{};
 		FragShaderHandle fs{};
 		PrimitiveTopologyType topology = PrimitiveTopologyType::eCount;
+		DepthStencilDesc depth_stencil;
 		RasterizerStateDesc rasterizer{};
 		u32 shader_program{};
 
@@ -420,33 +481,15 @@ void main() {
 			VtxShaderHandle vertex_shader,
 			FragShaderHandle fragment_shader,
 			PrimitiveTopologyType topology_type,
+			const DepthStencilDesc& ds_desc,
 			const RasterizerStateDesc& rasterizer_state 
 		) noexcept
 			: vs(vertex_shader)
 			, fs(fragment_shader)
 			, topology(topology_type)
+			, depth_stencil(ds_desc)
 			, rasterizer(rasterizer_state)
 		{}
-
-		PipelineState& set_vertex_shader(VtxShaderHandle vertex_shader) noexcept {
-			vs = vertex_shader;
-			return *this;
-		}
-
-		PipelineState& set_fragment_shader(FragShaderHandle fragment) noexcept {
-			fs = fragment;
-			return *this;
-		}
-
-		PipelineState& set_topology(PrimitiveTopologyType type) noexcept {
-			topology = type;
-			return *this;
-		}
-
-		PipelineState& set_rasterizer(const RasterizerStateDesc& desc) noexcept {
-			rasterizer = desc;
-			return *this;
-		}
 
 		PipelineState& build(bool destroy_shaders = true) noexcept {
 			shader_program = ShaderCompiler::link_shaders(vs, fs);
@@ -461,14 +504,15 @@ void main() {
 	};
 
 	template<FixedString VS, FixedString FS>
-	inline auto generate_pipeline_from_shaders(PrimitiveTopologyType topology, const RasterizerStateDesc& rasterizer) noexcept {
+	inline auto generate_pipeline_from_shaders(PrimitiveTopologyType topology, const DepthStencilDesc& depth_stencil = {}, const RasterizerStateDesc& rasterizer = RasterizerStateDesc{}) noexcept {
 		PipelineState<
 			decltype(detail::generate_input_layout<VS>()),
 			decltype(detail::generate_binding_set<VS, FS>())
-		> pipeline{
+		> pipeline {
 			ShaderCompiler::compile_from_code<VtxShaderHandle>(VS),
 			ShaderCompiler::compile_from_code<FragShaderHandle>(FS),
 			topology,
+			depth_stencil,
 			rasterizer
 		};
 		pipeline.build(true);
