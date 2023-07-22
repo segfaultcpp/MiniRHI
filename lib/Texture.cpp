@@ -73,6 +73,13 @@ namespace minirhi {
 				auto type = GLint(get_format_type(desc.pixel_format));
 
 				if (desc.extent == TextureExtent::e2D) {
+#ifndef _WIN32
+					glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+					glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+					glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+					glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+#endif
+
 					glTexImage2D(
 						target, 
 						0, 
