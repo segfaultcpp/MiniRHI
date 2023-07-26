@@ -1,0 +1,223 @@
+#pragma once
+#include "Core/Core.hpp"
+#include "MiniRHI/Shader.hpp"
+#include <type_traits>
+#ifndef ANDROID
+#include <glew/glew.h>
+#else
+#include <GLES3/gl3.h>
+#include <GLES3/gl32.h>
+#endif
+
+#include "MiniRHI/Buffer.hpp"
+#include "MiniRHI/PipelineState.hpp"
+#include "PipelineState.hpp"
+#include "Buffer.hpp"
+#include "Texture.hpp"
+
+#include <array>
+
+#include <glm/mat3x3.hpp>
+#include <glm/mat4x4.hpp>
+
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp> // TODO: add glm
+#include <limits>
+
+namespace minirhi
+{
+	struct Viewport {
+		size_t x;
+		size_t y;
+		size_t width;
+		size_t height;
+
+		Viewport() noexcept = default;
+
+		explicit constexpr Viewport(size_t w, size_t h, size_t x_ = 0, size_t y_ = 0) noexcept
+			: x(x_)
+			, y(y_)
+			, width(w)
+			, height(h)
+		{}
+	};
+	
+	template<typename PipelineAttrs, typename BS>
+	struct DrawParams {
+		Viewport viewport{};
+		PipelineState<PipelineAttrs, BS> pipeline{};
+	};
+
+	template<typename PipelineAttrs, typename BS>
+	auto make_draw_params(const Viewport& vp, const PipelineState<PipelineAttrs, BS>& ps) noexcept {
+		return DrawParams<PipelineAttrs, BS> {
+			.viewport = vp,
+			.pipeline = ps,
+		};
+	}
+
+	namespace detail {
+		template<typename UserBS, typename PipelineBS>
+		struct DoesUserBindingSetMatch;
+
+		template<typename... UserSlots, typename... PipelineSlots>
+		struct DoesUserBindingSetMatch<BindingSet<UserSlots...>, BindingSet<PipelineSlots...>> {
+			static constexpr bool kValue = (SameAsAny<PipelineSlots, UserSlots...> && ...);
+		};
+	
+		static constexpr u32 kInvalidVAHandle = std::numeric_limits<u32>::max();
+
+		void clear_color_buffer_impl_(f32 r, f32 g, f32 b, f32 a) noexcept;
+		void clear_depth_buffer_impl_() noexcept;
+		void clear_stencil_buffer_impl_() noexcept;
+
+		void unset_pipeline_impl_() noexcept;
+		void draw_impl_(std::span<const VtxAttrData> attribs, PrimitiveTopologyType topology, u32 vb, u32 vao, size_t vertex_count, size_t offset) noexcept;
+		void draw_indexed_impl_(std::span<const VtxAttrData> attribs, PrimitiveTopologyType topology, u32 vb, u32 ib, u32 vao, size_t index_count, size_t offset) noexcept;
+	
+		void set_texture2d_binding_impl_(u32 bound_texture_count, u32 program, std::string_view name, u32 texture) noexcept;
+		void set_uint_binding_impl_(u32 program, std::string_view name, u32 value) noexcept;
+		void set_float_binding_impl_(u32 program, std::string_view name, f32 value) noexcept;
+		void set_mat4_binding_impl_(u32 program, std::string_view name, const glm::mat4& value) noexcept;
+	}
+
+	template<typename Attrs, typename BS>
+	class [[nodiscard]] DrawCtx {
+		friend class CmdCtx;
+	private:
+		static constexpr auto kAttrs = get_vtx_attr_array(Attrs{});
+
+		u32 vao_ = detail::kInvalidVAHandle;
+		u32 program_ = kShaderInvalidHandle;
+		PrimitiveTopologyType topology_ = PrimitiveTopologyType::eTriangle;
+		std::reference_wrapper<bool> context_in_use_;
+
+		DrawCtx(u32 vao, u32 program, PrimitiveTopologyType topology, bool& ctx_in_use) noexcept 
+			: vao_(vao)
+			, program_(program)
+			, topology_(topology)
+			, context_in_use_(ctx_in_use)
+		{}
+
+	public:
+		DrawCtx(const DrawCtx&) = delete;
+		DrawCtx& operator=(const DrawCtx&) = delete;
+
+		DrawCtx(DrawCtx&& rhs) noexcept 
+			: vao_(rhs.vao_)
+			, context_in_use_(rhs.context_in_use_)
+		{
+			rhs.vao_ = detail::kInvalidVAHandle;
+		}
+
+		DrawCtx& operator=(DrawCtx&& rhs) noexcept {
+			if (this == &rhs) {
+				return *this;
+			}
+
+			vao_ = rhs.vao_;
+			context_in_use_ = rhs.context_in_use_;
+
+			rhs.vao_ = detail::kInvalidVAHandle;
+			return *this;
+		}
+
+		~DrawCtx() noexcept {
+			finish();
+		}
+
+		void clear_color_buffer(f32 r, f32 g, f32 b, f32 a) const noexcept {
+			detail::clear_color_buffer_impl_(r, g, b, a);
+		}
+
+		void clear_depth_buffer() const noexcept {
+			detail::clear_depth_buffer_impl_();
+		}
+
+		void clear_stencil_buffer() const noexcept {
+			detail::clear_stencil_buffer_impl_();
+		}
+
+		template<typename... Slots>
+		void set_bindings(const BindingSet<Slots...>& bs) const noexcept {
+			static_assert(detail::DoesUserBindingSetMatch<BindingSet<Slots...>, BS>::kValue, "User-defined BindingSet does not match the pipeline's binding set!");
+			u32 bound_texture_count = 0;
+			(set_binding_(bs.template get_slot<Slots>(), bound_texture_count), ...);
+		}
+
+		template<TVtxElem Elem>
+		void draw(VertexBufferRC<Elem> vb, size_t vertex_count, size_t offset) const noexcept {
+			static_assert(std::same_as<Attrs, MakeVertexAttributes<Elem>>, "Vertex buffer's vertex attributes does not match the pipeline's vertex attributes!");
+			detail::draw_impl_(kAttrs, topology_, vb.get().handle, vao_, vertex_count, offset);
+		}
+
+		template<TVtxElem Elem>
+		void draw_indexed(VertexBufferRC<Elem> vb, IndexBufferRC ib, size_t index_count, size_t offset) const noexcept {
+			static_assert(std::same_as<Attrs, MakeVertexAttributes<Elem>>, "Vertex buffer's vertex attributes does not match the pipeline's vertex attributes!");
+			detail::draw_indexed_impl_(kAttrs, topology_, vb.get().handle, ib.get().handle, vao_, index_count, offset);
+		}
+
+		void finish() noexcept {
+			if (vao_ != detail::kInvalidVAHandle) {
+				vao_ = detail::kInvalidVAHandle;
+				program_ = kShaderInvalidHandle;
+				topology_ = PrimitiveTopologyType::eCount;
+				context_in_use_.get() = false;
+				
+				detail::unset_pipeline_impl_();
+			}
+		}
+
+	private:
+		template<template<typename, typename> typename Slot, typename Type, typename Name>
+		void set_binding_(const Slot<Type, Name>& v, u32& bound_texture_count) const noexcept {
+			static constexpr FixedString  kName = Name::kValue;
+			if constexpr (std::same_as<Slot<Type, Name>, Texture2DSlot<kName>>) {
+				detail::set_texture2d_binding_impl_(bound_texture_count, program_, std::string_view(kName), v.value.get().handle);
+				bound_texture_count++;
+				return;
+			} 
+			if constexpr (std::same_as<Slot<Type, Name>, UIntSlot<kName>>) {
+				detail::set_uint_binding_impl_(program_, std::string_view(kName), v.value);
+				return;
+			} 
+			if constexpr (std::same_as<Slot<Type, Name>, FloatSlot<kName>>) {
+				detail::set_float_binding_impl_(program_, std::string_view(kName), v.value);
+			}
+			if constexpr (std::same_as<Slot<Type, Name>, Mat4Slot<kName>>) {
+				detail::set_mat4_binding_impl_(program_, std::string_view(kName), v.value);
+			}
+		}
+
+	};
+
+	class CmdCtx {
+	private:
+		inline static bool context_in_use_ = false;
+
+	public:
+		template<typename Attrs, typename BS>
+		[[nodiscard]]
+		static DrawCtx<Attrs, BS> start_draw_context(const DrawParams<Attrs, BS>& params) noexcept {
+			assert(!context_in_use_ && "Current context is busy! You must finish previous context before starting new one!");
+			static constexpr auto attrs = get_vtx_attr_array(Attrs{});
+			
+			u32 vao = create_vao_();
+			setup_pipeline_(
+				params.pipeline.depth_stencil,
+				params.pipeline.rasterizer, 
+				params.viewport, 
+				params.pipeline.shader_program
+			);
+
+			context_in_use_ = true;
+			return DrawCtx<Attrs, BS>(vao, params.pipeline.shader_program, params.pipeline.topology, context_in_use_);
+		}
+	
+	private:
+		static void setup_pipeline_(const DepthStencilDesc& depth_stencil, const RasterizerStateDesc& rasterizer, const Viewport& vp, u32 program) noexcept;
+		static void set_rasterizer_state_(const RasterizerStateDesc& rs) noexcept;
+		static u32 create_vao_() noexcept;void draw_internal_(PrimitiveTopologyType type, size_t vertex_count, size_t offset) noexcept;
+
+	};
+}

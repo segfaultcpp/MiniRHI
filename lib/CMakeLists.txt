@@ -2,7 +2,7 @@ set(MINIRHI_SOURCES
     Buffer.cpp 
     Format.cpp 
     MiniRHI.cpp 
-    RenderCommands.cpp 
+    CmdCtx.cpp 
     Shader.cpp 
     Texture.cpp
     )

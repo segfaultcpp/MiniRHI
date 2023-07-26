@@ -106,5 +106,6 @@ namespace minirhi {
 
 	void Texture::destroy(Texture& tex) noexcept {
 		glDeleteTextures(1, &tex.handle);
+		tex.handle = kInvalidTextureHandle;
 	}
 }

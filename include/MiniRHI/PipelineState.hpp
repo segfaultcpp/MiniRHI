@@ -473,7 +473,7 @@ void main() {
 		PrimitiveTopologyType topology = PrimitiveTopologyType::eCount;
 		DepthStencilDesc depth_stencil;
 		RasterizerStateDesc rasterizer{};
-		u32 shader_program{};
+		u32 shader_program = kShaderInvalidHandle;
 
 		explicit constexpr PipelineState() noexcept = default;
 

@@ -5,7 +5,7 @@
 #include "MiniRHI/MiniRHI.hpp"
 
 #include "MiniRHI/PipelineState.hpp"
-#include "MiniRHI/RenderCommands.hpp"
+#include "MiniRHI/CmdCtx.hpp"
 #include "MiniRHI/Texture.hpp"
 #include "MiniRHI/TypeInference.hpp"
 
@@ -141,7 +141,6 @@ void main()
 
     Pipeline pipeline_;
     minirhi::VertexBufferRC<Vertex> vb_;
-    minirhi::RenderCommands cmds_;
     minirhi::TextureRC texture_;
     Image texture_res_;
 
@@ -189,8 +188,6 @@ public:
 
         texture_ = minirhi::make_texture_2d_rc(minirhi::SamplerDesc{}, x, y, texture_format, texture_res_.get(), true);
 
-        cmds_ = minirhi::make_render_commands();
-
         return 0;
     }
 
@@ -204,10 +201,11 @@ public:
             minirhi::Mat4Slot<"view">(view_mat_),
             minirhi::Texture2DSlot<"tex">(texture_)
         );
-        auto draw_params = minirhi::make_draw_params(kVP, pipeline_, vb_, bindings);
+        auto draw_params = minirhi::make_draw_params(kVP, pipeline_);
+        auto draw_ctx = minirhi::CmdCtx::start_draw_context(draw_params);
 
-        cmds_.clear_color_buffer(0.f, 0.749, 1.f, 1.f);
-        cmds_.clear_depth_buffer();
+        draw_ctx.clear_color_buffer(0.f, 0.749, 1.f, 1.f);
+        draw_ctx.clear_depth_buffer();
         std::size_t i = 0;
         static constexpr auto pos = kObjPositions[0];
         for (auto pos : kObjPositions) {
@@ -216,8 +214,9 @@ public:
             GLfloat angle = 20.0f * i++;
             model = glm::rotate(model, angle, glm::vec3(1.0f, 0.3f, 0.5f));
 
-            draw_params.bindings.get_mat4_slot<"model">().value = model;
-            cmds_.draw(draw_params, kVertices.size(), 0);
+            bindings.get_mat4_slot<"model">().value = model;
+            draw_ctx.set_bindings(bindings);
+            draw_ctx.draw(vb_, kVertices.size(), 0);
         }
     }
 };

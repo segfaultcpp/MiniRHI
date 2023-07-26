@@ -5,7 +5,7 @@
 #include "MiniRHI/MiniRHI.hpp"
 
 #include "MiniRHI/PipelineState.hpp"
-#include "MiniRHI/RenderCommands.hpp"
+#include "MiniRHI/CmdCtx.hpp"
 #include "MiniRHI/TypeInference.hpp"
 #define SDL_MAIN_HANDLED
 #include "sdl/SDL_error.h"
@@ -62,7 +62,7 @@ void main() {
 
     Pipeline pipeline_;
     minirhi::VertexBufferRC<Vertex> vb_;
-    minirhi::RenderCommands cmds_;
+    
 public:
     explicit HelloTriangle() noexcept 
         : App("HelloTriangle", kScreenWidth, kScreenHeight)
@@ -77,17 +77,17 @@ public:
 
 
         vb_.reset(std::span<const Vertex>(vertices.begin(), vertices.end()));
-        cmds_ = minirhi::make_render_commands();
         return 0;
     }
 
-void render() noexcept override {
-    minirhi::Viewport vp{ kScreenWidth, kScreenHeight };
-    auto draw_params = minirhi::make_draw_params(vp, pipeline_, vb_);
+    void render() noexcept override {
+        minirhi::Viewport vp{ kScreenWidth, kScreenHeight };
+        auto draw_params = minirhi::make_draw_params(vp, pipeline_);
 
-    cmds_.clear_color_buffer(1.0, 0.0, 0.0, 0.0);
-    cmds_.draw(draw_params, vertices.size(), 0);
-}
+        auto draw_ctx = minirhi::CmdCtx::start_draw_context(draw_params);
+        draw_ctx.clear_color_buffer(1.0, 0.0, 0.0, 0.0);
+        draw_ctx.draw(vb_, vertices.size(), 0);
+    }
 };
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {

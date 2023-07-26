@@ -32,6 +32,7 @@ namespace minirhi {
 
         void destroy_buffer_(u32 &handle) noexcept {
             glDeleteBuffers(1, &handle);
+            handle = kBufferInvalidHandle;
         }
     }
 }
