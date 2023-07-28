@@ -27,7 +27,7 @@ namespace minirhi {
 			, _handle(rhs._handle)
 		{
 
-			if constexpr (!std::is_constant_evaluated()) {
+			if (!std::is_constant_evaluated()) {
 				assert(rhs.ref_count_ != nullptr && "Cannot copy invalid RC object.");
 			}
 			++(*ref_count_);
@@ -42,7 +42,7 @@ namespace minirhi {
 				--(*ref_count_);
 			}
 			
-			if constexpr (!std::is_constant_evaluated()) {
+			if (!std::is_constant_evaluated()) {
 				assert(rhs.ref_count_ != nullptr && "Cannot copy invalid RC object.");
 			}
 
@@ -58,7 +58,7 @@ namespace minirhi {
 			: ref_count_(rhs.ref_count_)
 			, _handle(std::move(rhs._handle))
 		{
-			if constexpr (!std::is_constant_evaluated()) {
+			if (!std::is_constant_evaluated()) {
 				assert(rhs.ref_count_ != nullptr && "Cannot move invalid RC object.");
 			}
 			rhs.ref_count_ = nullptr;
@@ -68,7 +68,7 @@ namespace minirhi {
 			if (this == &rhs) {
 				return *this;
 			}
-			if constexpr (!std::is_constant_evaluated()) {
+			if (!std::is_constant_evaluated()) {
 				assert(rhs.ref_count_ != nullptr && "Cannot move invalid RC object.");
 			}
 			

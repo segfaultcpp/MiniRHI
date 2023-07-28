@@ -126,18 +126,6 @@ namespace minirhi
 			finish();
 		}
 
-		void clear_color_buffer(f32 r, f32 g, f32 b, f32 a) const noexcept {
-			detail::clear_color_buffer_impl_(r, g, b, a);
-		}
-
-		void clear_depth_buffer() const noexcept {
-			detail::clear_depth_buffer_impl_();
-		}
-
-		void clear_stencil_buffer() const noexcept {
-			detail::clear_stencil_buffer_impl_();
-		}
-
 		template<typename... Slots>
 		void set_bindings(const BindingSet<Slots...>& bs) const noexcept {
 			static_assert(detail::DoesUserBindingSetMatch<BindingSet<Slots...>, BS>::kValue, "User-defined BindingSet does not match the pipeline's binding set!");
@@ -214,6 +202,18 @@ namespace minirhi
 			return DrawCtx<Attrs, BS>(vao, params.pipeline.shader_program, params.pipeline.topology, context_in_use_);
 		}
 	
+		static void clear_color_buffer(f32 r, f32 g, f32 b, f32 a) noexcept {
+			detail::clear_color_buffer_impl_(r, g, b, a);
+		}
+
+		static void clear_depth_buffer() noexcept {
+			detail::clear_depth_buffer_impl_();
+		}
+
+		static void clear_stencil_buffer() noexcept {
+			detail::clear_stencil_buffer_impl_();
+		}
+
 	private:
 		static void setup_pipeline_(const DepthStencilDesc& depth_stencil, const RasterizerStateDesc& rasterizer, const Viewport& vp, u32 program) noexcept;
 		static void set_rasterizer_state_(const RasterizerStateDesc& rs) noexcept;

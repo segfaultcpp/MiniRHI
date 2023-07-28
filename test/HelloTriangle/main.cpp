@@ -85,7 +85,7 @@ public:
         auto draw_params = minirhi::make_draw_params(vp, pipeline_);
 
         auto draw_ctx = minirhi::CmdCtx::start_draw_context(draw_params);
-        draw_ctx.clear_color_buffer(1.0, 0.0, 0.0, 0.0);
+        minirhi::CmdCtx::clear_color_buffer(1.0, 0.0, 0.0, 0.0);
         draw_ctx.draw(vb_, vertices.size(), 0);
     }
 };
