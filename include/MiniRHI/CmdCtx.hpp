@@ -45,11 +45,11 @@ namespace minirhi
 	template<typename PipelineAttrs, typename BS>
 	struct DrawParams {
 		Viewport viewport{};
-		PipelineState<PipelineAttrs, BS> pipeline{};
+		GraphicsPipeline<PipelineAttrs, BS> pipeline{};
 	};
 
 	template<typename PipelineAttrs, typename BS>
-	auto make_draw_params(const Viewport& vp, const PipelineState<PipelineAttrs, BS>& ps) noexcept {
+	auto make_draw_params(const Viewport& vp, GraphicsPipeline<PipelineAttrs, BS> ps) noexcept {
 		return DrawParams<PipelineAttrs, BS> {
 			.viewport = vp,
 			.pipeline = ps,
@@ -72,8 +72,8 @@ namespace minirhi
 		void clear_stencil_buffer_impl_() noexcept;
 
 		void unset_pipeline_impl_() noexcept;
-		void draw_impl_(std::span<const VtxAttrData> attribs, PrimitiveTopologyType topology, u32 vb, u32 vao, size_t vertex_count, size_t offset) noexcept;
-		void draw_indexed_impl_(std::span<const VtxAttrData> attribs, PrimitiveTopologyType topology, u32 vb, u32 ib, u32 vao, size_t index_count, size_t offset) noexcept;
+		void draw_impl_(PrimitiveTopologyType topology, u32 vb, size_t vertex_count, size_t offset) noexcept;
+		void draw_indexed_impl_(PrimitiveTopologyType topology, u32 vb, u32 ib, size_t index_count, size_t offset) noexcept;
 	
 		void set_texture2d_binding_impl_(u32 bound_texture_count, u32 program, std::string_view name, u32 texture) noexcept;
 		void set_uint_binding_impl_(u32 program, std::string_view name, u32 value) noexcept;
@@ -105,9 +105,13 @@ namespace minirhi
 
 		DrawCtx(DrawCtx&& rhs) noexcept 
 			: vao_(rhs.vao_)
+			, program_(rhs.program_)
+			, topology_(rhs.topology_)
 			, context_in_use_(rhs.context_in_use_)
 		{
 			rhs.vao_ = detail::kInvalidVAHandle;
+			rhs.program_ = kShaderInvalidHandle;
+			rhs.topology_ = PrimitiveTopologyType::eCount;
 		}
 
 		DrawCtx& operator=(DrawCtx&& rhs) noexcept {
@@ -116,9 +120,14 @@ namespace minirhi
 			}
 
 			vao_ = rhs.vao_;
+			program_ = rhs.program_;
+			topology_ = rhs.topology_;
 			context_in_use_ = rhs.context_in_use_;
 
 			rhs.vao_ = detail::kInvalidVAHandle;
+			rhs.program_ = kShaderInvalidHandle;
+			rhs.topology_ = PrimitiveTopologyType::eCount;
+
 			return *this;
 		}
 
@@ -136,13 +145,13 @@ namespace minirhi
 		template<TVtxElem Elem>
 		void draw(VertexBufferRC<Elem> vb, size_t vertex_count, size_t offset) const noexcept {
 			static_assert(std::same_as<Attrs, MakeVertexAttributes<Elem>>, "Vertex buffer's vertex attributes does not match the pipeline's vertex attributes!");
-			detail::draw_impl_(kAttrs, topology_, vb.get().handle, vao_, vertex_count, offset);
+			detail::draw_impl_(topology_, vb.get().handle, vertex_count, offset);
 		}
 
 		template<TVtxElem Elem>
 		void draw_indexed(VertexBufferRC<Elem> vb, IndexBufferRC ib, size_t index_count, size_t offset) const noexcept {
 			static_assert(std::same_as<Attrs, MakeVertexAttributes<Elem>>, "Vertex buffer's vertex attributes does not match the pipeline's vertex attributes!");
-			detail::draw_indexed_impl_(kAttrs, topology_, vb.get().handle, ib.get().handle, vao_, index_count, offset);
+			detail::draw_indexed_impl_(topology_, vb.get().handle, ib.get().handle, index_count, offset);
 		}
 
 		void finish() noexcept {
@@ -188,18 +197,18 @@ namespace minirhi
 		[[nodiscard]]
 		static DrawCtx<Attrs, BS> start_draw_context(const DrawParams<Attrs, BS>& params) noexcept {
 			assert(!context_in_use_ && "Current context is busy! You must finish previous context before starting new one!");
-			static constexpr auto attrs = get_vtx_attr_array(Attrs{});
+			static constexpr auto kAttrs = get_vtx_attr_array(Attrs{});
 			
 			u32 vao = create_vao_();
 			setup_pipeline_(
-				params.pipeline.depth_stencil,
-				params.pipeline.rasterizer, 
-				params.viewport, 
-				params.pipeline.shader_program
+				vao,
+				kAttrs,
+				params.pipeline.raw, 
+				params.viewport
 			);
 
 			context_in_use_ = true;
-			return DrawCtx<Attrs, BS>(vao, params.pipeline.shader_program, params.pipeline.topology, context_in_use_);
+			return DrawCtx<Attrs, BS>(vao, u32(params.pipeline.raw.state.program), PrimitiveTopologyType(u32(params.pipeline.raw.state.topology)), context_in_use_);
 		}
 	
 		static void clear_color_buffer(f32 r, f32 g, f32 b, f32 a) noexcept {
@@ -215,9 +224,7 @@ namespace minirhi
 		}
 
 	private:
-		static void setup_pipeline_(const DepthStencilDesc& depth_stencil, const RasterizerStateDesc& rasterizer, const Viewport& vp, u32 program) noexcept;
-		static void set_rasterizer_state_(const RasterizerStateDesc& rs) noexcept;
+		static void setup_pipeline_(u32 vao, std::span<const VtxAttrData> attribs, detail::GraphicsPipelineRaw pipeline, const Viewport& vp) noexcept;
 		static u32 create_vao_() noexcept;void draw_internal_(PrimitiveTopologyType type, size_t vertex_count, size_t offset) noexcept;
-
 	};
 }

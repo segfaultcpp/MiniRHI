@@ -90,7 +90,7 @@ void main()
 }
 )str";
 
-    using Pipeline = decltype(minirhi::generate_pipeline_from_shaders<kVS, kFS>(minirhi::PrimitiveTopologyType::eTriangle));
+    using Pipeline = decltype(minirhi::generate_graphics_pipeline_from_shaders<kVS, kFS>(minirhi::PrimitiveTopologyType::eTriangle));
 
     static constexpr std::array kVertices = {
         Vertex{{-0.5f, -0.5f, -0.5f},  {0.0f, 0.0f}},
@@ -155,7 +155,7 @@ public:
         assert(code == 0);
 
         vb_.reset(std::span<const Vertex>(kVertices.begin(), kVertices.end()));
-        pipeline_ = minirhi::generate_pipeline_from_shaders<kVS, kFS>(
+        pipeline_ = minirhi::generate_graphics_pipeline_from_shaders<kVS, kFS>(
             minirhi::PrimitiveTopologyType::eTriangle, 
             minirhi::DepthStencilDesc {
                 .enable_depth = true,

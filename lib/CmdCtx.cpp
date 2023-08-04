@@ -71,32 +71,43 @@ namespace minirhi {
 		return gDefaultVAO;
 	}
 
-	void CmdCtx::setup_pipeline_(const DepthStencilDesc& depth_stencil, const RasterizerStateDesc& rasterizer, const Viewport& vp, u32 program) noexcept {
+	void CmdCtx::setup_pipeline_(u32 vao, std::span<const VtxAttrData> attribs, detail::GraphicsPipelineRaw pipeline, const Viewport& vp) noexcept {
 		glViewport(GLint(vp.x), GLint(vp.y), GLint(vp.width), GLint(vp.height));
 
-		if (depth_stencil.enable_depth) {
+		if (bool(pipeline.state.enable_depth)) {
 			glEnable(GL_DEPTH_TEST);
-			glDepthMask(GLboolean(depth_stencil.depth_mask == DepthMask::eAll));
-			glDepthFunc(convert_depth_func(depth_stencil.depth_func));
+			glDepthMask(GLboolean(DepthMask(u32(pipeline.state.depth_mask)) == DepthMask::eAll));
+			glDepthFunc(convert_depth_func(DepthFunc(u32(pipeline.state.depth_fn))));
 		}
 
-		glUseProgram(program);
-		set_rasterizer_state_(rasterizer);
-	}
+		glBindVertexArray(vao);
+		std::size_t i = 0;
+		for (auto[format, size, offset, stride] : attribs) {
+			glVertexAttribPointer(
+				i, 
+				GLint(get_component_count(format)),
+				get_format_type(format),
+				GL_FALSE,
+				GLsizei(stride),
+				std::bit_cast<void*>(offset)
+			);
+			glEnableVertexAttribArray(i);
+			i++;
+		}
 
-	void CmdCtx::set_rasterizer_state_(const RasterizerStateDesc& rs) noexcept {
-		if (rs.cull_mode_enabled) {
+		glUseProgram(pipeline.state.program);
+		
+		if (bool(pipeline.state.cull_mode_enabled)) {
 			glEnable(GL_CULL_FACE);
-			glCullFace(convert_cull_mode(rs.cull_mode));
+			glCullFace(convert_cull_mode(CullFaceMode(u32(pipeline.state.cull_mode))));
 		} else {
 			glDisable(GL_CULL_FACE);
 		}
-		glFrontFace(convert_front_face(rs.front));
+		glFrontFace(convert_front_face(FrontFace(u32(pipeline.state.front_face))));
 
-		glLineWidth(rs.line_width);
 #ifndef ANDROID
-		glPolygonMode(GL_FRONT_AND_BACK, convert_polygon_mode(rs.polygon_mode));
-		if (rs.line_smooth_enabled) {
+		glPolygonMode(GL_FRONT_AND_BACK, convert_polygon_mode(PolygonMode(u32(pipeline.state.polygon_mode))));
+		if (bool(pipeline.state.line_smooth_enabled)) {
 			glEnable(GL_LINE_SMOOTH);
 		} else {
 			glDisable(GL_LINE_SMOOTH);
@@ -135,52 +146,15 @@ namespace minirhi {
 			glDisable(GL_DEPTH_TEST);
 		}
 	
-		void draw_impl_(std::span<const VtxAttrData> attribs, PrimitiveTopologyType topology, u32 vb, u32 vao, size_t vertex_count, size_t offset) noexcept {
-			glBindVertexArray(vao);
+		void draw_impl_(PrimitiveTopologyType topology, u32 vb, size_t vertex_count, size_t offset) noexcept {
 			glBindBuffer(GL_ARRAY_BUFFER, vb);
-
-			std::size_t i = 0;
-			for (auto[format, size, offset, stride] : attribs) {
-				glVertexAttribPointer(
-					i, 
-					GLint(get_component_count(format)),
-					get_format_type(format),
-					GL_FALSE,
-					GLsizei(stride),
-					std::bit_cast<void*>(offset)
-				);
-				glEnableVertexAttribArray(i);
-				i++;
-			}
-
 			glDrawArrays(convert_topology_type(topology), GLint(offset), GLsizei(vertex_count));
-			glBindVertexArray(0);
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
 		}
 
-		void draw_indexed_impl_(std::span<const VtxAttrData> attribs, PrimitiveTopologyType topology, u32 vb, u32 ib, u32 vao, size_t index_count, size_t offset) noexcept {
-			glBindVertexArray(vao);
+		void draw_indexed_impl_(PrimitiveTopologyType topology, u32 vb, u32 ib, size_t index_count, size_t offset) noexcept {
 			glBindBuffer(GL_ARRAY_BUFFER, vb);
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib);
-			
-			std::size_t i = 0;
-			for (auto[format, size, offset, stride] : attribs) {
-				glVertexAttribPointer(
-					i, 
-					GLint(get_component_count(format)),
-					get_format_type(format),
-					GL_FALSE,
-					GLsizei(stride),
-					std::bit_cast<void*>(offset)
-				);
-				glEnableVertexAttribArray(i);
-				i++;
-			}
-			
 			glDrawElements(convert_topology_type(topology), GLsizei(index_count), GL_UNSIGNED_INT, std::bit_cast<void*>(offset));
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
-			glBindVertexArray(0);
 		}
 
 		void set_texture2d_binding_impl_(u32 bound_texture_count, u32 program, std::string_view name, u32 texture) noexcept {

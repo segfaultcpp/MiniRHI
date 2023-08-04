@@ -58,7 +58,7 @@ void main() {
         Vertex { {-0.f, 1.f}, {1.f, 0.f, 1.f} }
     };
 
-    using Pipeline = decltype(minirhi::generate_pipeline_from_shaders<kVS, kFS>(minirhi::PrimitiveTopologyType::eCount));
+    using Pipeline = decltype(minirhi::generate_graphics_pipeline_from_shaders<kVS, kFS>(minirhi::PrimitiveTopologyType::eCount));
 
     Pipeline pipeline_;
     minirhi::VertexBufferRC<Vertex> vb_;
@@ -73,7 +73,7 @@ public:
     i32 init() noexcept override {
         i32 code = App::init();
         assert(code == 0);
-        pipeline_ = minirhi::generate_pipeline_from_shaders<kVS, kFS>(minirhi::PrimitiveTopologyType::eTriangle);
+        pipeline_ = minirhi::generate_graphics_pipeline_from_shaders<kVS, kFS>(minirhi::PrimitiveTopologyType::eTriangle);
 
 
         vb_.reset(std::span<const Vertex>(vertices.begin(), vertices.end()));

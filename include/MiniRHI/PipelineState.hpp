@@ -21,7 +21,7 @@
 namespace minirhi
 {
 	enum class PrimitiveTopologyType {
-		ePoint,
+		ePoint = 0,
 		eLine,
 		eTriangle, 
 		eCount,
@@ -365,17 +365,17 @@ void main() {
 	struct BlendStateDesc {};
 
 	enum class FrontFace {
-		eClockWise,
+		eClockWise = 0,
 		eCounterClockWise,
 	};
 
 	enum class CullFaceMode {
-		eFront,
+		eFront = 0,
 		eBack,
 	};
 
 	enum class PolygonMode {
-		ePoint,
+		ePoint = 0,
 		eLine,
 		eFill,
 	};
@@ -445,12 +445,12 @@ void main() {
 	};
 
 	enum class DepthMask : u8 {
-		eZero,
+		eZero = 0,
 		eAll,
 	};
 
 	enum class DepthFunc : u8 {
-		eAlways,
+		eAlways = 0,
 		eNever,
 		eEq,
 		eLe,
@@ -466,18 +466,63 @@ void main() {
 		DepthFunc depth_func = DepthFunc::eLe;
 	};
 
+	template<typename, typename>
+	struct GraphicsPipelineDesc;
+
+	namespace detail {
+		union GraphicsPipelineRaw {
+			u64 dummy_ = 0;
+			struct {
+				u32 topology : 2;
+				// depth stencil
+				u32 enable_depth : 1;
+				u32 depth_mask : 1;
+				u32 depth_fn : 3;
+				// rasterizer
+				u32 front_face : 1;
+				u32 cull_mode_enabled : 1;
+				u32 line_smooth_enabled : 1;
+				u32 cull_mode : 1;
+				u32 polygon_mode : 2;
+				
+				u32 padding : 19;
+				u32 program : 32;
+			} state;
+		};
+		static_assert(sizeof(GraphicsPipelineRaw) == sizeof(u64));
+	}
+
 	template<typename Attrs, typename BS>
-	struct PipelineState {
+	struct GraphicsPipeline {
+		detail::GraphicsPipelineRaw raw;
+
+		explicit  GraphicsPipeline() noexcept = default;
+
+		explicit GraphicsPipeline(const GraphicsPipelineDesc<Attrs, BS>& desc, u32 program) noexcept {
+			raw.state.program = program;
+			raw.state.topology = u32(desc.topology);
+			raw.state.enable_depth = u32(desc.depth_stencil.enable_depth);
+			raw.state.depth_mask = u32(desc.depth_stencil.depth_mask);
+			raw.state.depth_fn = u32(desc.depth_stencil.depth_func);
+			raw.state.front_face = u32(desc.rasterizer.front);
+			raw.state.cull_mode_enabled = u32(desc.rasterizer.cull_mode_enabled);
+			raw.state.line_smooth_enabled = u32(desc.rasterizer.line_smooth_enabled);
+			raw.state.cull_mode = u32(desc.rasterizer.cull_mode);
+			raw.state.polygon_mode = u32(desc.rasterizer.polygon_mode);
+		}
+	};
+
+	template<typename Attrs, typename BS>
+	struct GraphicsPipelineDesc {
 		VtxShaderHandle vs{};
 		FragShaderHandle fs{};
 		PrimitiveTopologyType topology = PrimitiveTopologyType::eCount;
 		DepthStencilDesc depth_stencil;
 		RasterizerStateDesc rasterizer{};
-		u32 shader_program = kShaderInvalidHandle;
 
-		explicit constexpr PipelineState() noexcept = default;
+		explicit constexpr GraphicsPipelineDesc() noexcept = default;
 
-		explicit constexpr PipelineState(
+		explicit constexpr GraphicsPipelineDesc(
 			VtxShaderHandle vertex_shader,
 			FragShaderHandle fragment_shader,
 			PrimitiveTopologyType topology_type,
@@ -491,21 +536,21 @@ void main() {
 			, rasterizer(rasterizer_state)
 		{}
 
-		PipelineState& build(bool destroy_shaders = true) noexcept {
-			shader_program = ShaderCompiler::link_shaders(vs, fs);
+		GraphicsPipeline<Attrs, BS> build(bool destroy_shaders = true) noexcept {
+			u32 shader_program = ShaderCompiler::link_shaders(vs, fs);
 			assert(shader_program != kShaderInvalidHandle);
 
 			if (destroy_shaders) {
 				ShaderCompiler::destroy_shaders(vs, fs);
 			}
 
-			return *this;
+			return GraphicsPipeline(*this, shader_program);
 		}
 	};
 
 	template<FixedString VS, FixedString FS>
-	inline auto generate_pipeline_from_shaders(PrimitiveTopologyType topology, const DepthStencilDesc& depth_stencil = {}, const RasterizerStateDesc& rasterizer = RasterizerStateDesc{}) noexcept {
-		PipelineState<
+	inline auto generate_graphics_pipeline_from_shaders(PrimitiveTopologyType topology, const DepthStencilDesc& depth_stencil = {}, const RasterizerStateDesc& rasterizer = RasterizerStateDesc{}) noexcept {
+		GraphicsPipelineDesc<
 			decltype(detail::generate_input_layout<VS>()),
 			decltype(detail::generate_binding_set<VS, FS>())
 		> pipeline {
@@ -515,7 +560,6 @@ void main() {
 			depth_stencil,
 			rasterizer
 		};
-		pipeline.build(true);
-		return pipeline;
+		return pipeline.build(true);
 	}
 }
