@@ -3,6 +3,8 @@
 #include "sdl/SDL_error.h"
 #include "sdl/SDL_events.h"
 #include "sdl/SDL_keycode.h"
+#include "sdl/SDL_mouse.h"
+#include "sdl/SDL_timer.h"
 #include "sdl/SDL_video.h"
 
 #include "MiniRHI/MiniRHI.hpp"
@@ -49,7 +51,7 @@ void App::run() noexcept {
     SDL_Event e;
     f32 delta = 16.6f;
     while(!quit) {
-        auto start = system_clock::now();
+        u64 start = SDL_GetTicks64();
         while(SDL_PollEvent( &e ) != 0) { 
             if(e.type == SDL_QUIT) {
                 quit = true;
@@ -59,9 +61,9 @@ void App::run() noexcept {
         }
         this->update(delta);
         this->render();
+
         SDL_GL_SwapWindow(window_);
-        auto end = system_clock::now();
-        delta = f32(duration_cast<microseconds>(end - start).count()) / 1000.f;
+        delta = f32(SDL_GetTicks64() - start);
     }
 }
 
