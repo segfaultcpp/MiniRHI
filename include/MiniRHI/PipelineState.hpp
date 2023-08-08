@@ -510,6 +510,36 @@ void main() {
 			raw.state.cull_mode = u32(desc.rasterizer.cull_mode);
 			raw.state.polygon_mode = u32(desc.rasterizer.polygon_mode);
 		}
+
+		template<typename OtherAttrs, typename OtherBS>
+		bool operator==(GraphicsPipeline<OtherAttrs, OtherBS> other) const noexcept {
+			return raw.dummy_ == other.raw.dummy_;
+		}
+
+		template<typename OtherAttrs, typename OtherBS>
+		bool operator!=(GraphicsPipeline<OtherAttrs, OtherBS> other) const noexcept {
+			return !(*this == other);
+		}
+
+		template<typename OtherAttrs, typename OtherBS>
+		bool operator<(GraphicsPipeline<OtherAttrs, OtherBS> other) const noexcept {
+			return raw.dummy_ < other.raw.dummy_;
+		}
+
+		template<typename OtherAttrs, typename OtherBS>
+		bool operator>=(GraphicsPipeline<OtherAttrs, OtherBS> other) const noexcept {
+			return !(*this < other);
+		}
+
+		template<typename OtherAttrs, typename OtherBS>
+		bool operator>(GraphicsPipeline<OtherAttrs, OtherBS> other) const noexcept {
+			return raw.dummy_ > other.raw.dummy_;
+		}
+
+		template<typename OtherAttrs, typename OtherBS>
+		bool operator<=(GraphicsPipeline<OtherAttrs, OtherBS> other) const noexcept {
+			return !(*this > other);
+		}
 	};
 
 	template<typename Attrs, typename BS>
