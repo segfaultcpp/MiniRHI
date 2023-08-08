@@ -27,6 +27,8 @@ static constexpr std::size_t kScreenWidth = 1280;
 static constexpr std::size_t kScreenHeight = 720;
 
 class HelloTriangle final : public App {
+    static constexpr minirhi::Viewport kVP{ kScreenWidth, kScreenHeight };
+
     static constexpr FixedString kVS = R"str(
 #version 330 core
 layout (location = 0) in vec2 position;
@@ -81,10 +83,7 @@ public:
     }
 
     void render() noexcept override {
-        minirhi::Viewport vp{ kScreenWidth, kScreenHeight };
-        auto draw_params = minirhi::make_draw_params(vp, pipeline_);
-
-        auto draw_ctx = minirhi::CmdCtx::start_draw_context(draw_params);
+        auto draw_ctx = minirhi::CmdCtx::start_draw_context(kVP, pipeline_);
         minirhi::CmdCtx::clear_color_buffer(1.0, 0.0, 0.0, 0.0);
         draw_ctx.draw(vb_, vertices.size(), 0);
     }

@@ -287,8 +287,7 @@ public:
             minirhi::Mat4Slot<"view">(camera_.look_at()),
             minirhi::Texture2DSlot<"tex">(texture_)
         );
-        auto draw_params = minirhi::make_draw_params(kVP, pipeline_);
-        auto draw_ctx = minirhi::CmdCtx::start_draw_context(draw_params);
+        auto draw_ctx = minirhi::CmdCtx::start_draw_context(kVP, pipeline_);
 
         minirhi::CmdCtx::clear_color_buffer(0.f, 0.749, 1.f, 1.f);
         minirhi::CmdCtx::clear_depth_buffer();

@@ -41,20 +41,6 @@ namespace minirhi
 			, height(h)
 		{}
 	};
-	
-	template<typename PipelineAttrs, typename BS>
-	struct DrawParams {
-		Viewport viewport{};
-		GraphicsPipeline<PipelineAttrs, BS> pipeline{};
-	};
-
-	template<typename PipelineAttrs, typename BS>
-	auto make_draw_params(const Viewport& vp, GraphicsPipeline<PipelineAttrs, BS> ps) noexcept {
-		return DrawParams<PipelineAttrs, BS> {
-			.viewport = vp,
-			.pipeline = ps,
-		};
-	}
 
 	namespace detail {
 		template<typename UserBS, typename PipelineBS>
@@ -195,20 +181,15 @@ namespace minirhi
 	public:
 		template<typename Attrs, typename BS>
 		[[nodiscard]]
-		static DrawCtx<Attrs, BS> start_draw_context(const DrawParams<Attrs, BS>& params) noexcept {
+		static DrawCtx<Attrs, BS> start_draw_context(const Viewport& vp, GraphicsPipeline<Attrs, BS> ps) noexcept {
 			assert(!context_in_use_ && "Current context is busy! You must finish previous context before starting new one!");
 			static constexpr auto kAttrs = get_vtx_attr_array(Attrs{});
 			
 			u32 vao = create_vao_();
-			setup_pipeline_(
-				vao,
-				kAttrs,
-				params.pipeline.raw, 
-				params.viewport
-			);
+			setup_pipeline_(vao, kAttrs, ps.raw, vp);
 
 			context_in_use_ = true;
-			return DrawCtx<Attrs, BS>(vao, u32(params.pipeline.raw.state.program), PrimitiveTopologyType(u32(params.pipeline.raw.state.topology)), context_in_use_);
+			return DrawCtx<Attrs, BS>(vao, u32(ps.raw.state.program), PrimitiveTopologyType(u32(ps.raw.state.topology)), context_in_use_);
 		}
 	
 		static void clear_color_buffer(f32 r, f32 g, f32 b, f32 a) noexcept {
