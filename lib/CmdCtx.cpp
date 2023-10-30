@@ -11,7 +11,7 @@
 
 #include <Core/Core.hpp>
 
-#include <glm/gtc/type_ptr.hpp> // TODO: add glm
+#include <glm/gtc/type_ptr.hpp> 
 
 namespace minirhi {
 	extern u32 gDefaultVAO;
@@ -115,6 +115,7 @@ namespace minirhi {
 #endif
 	}
 
+
 	namespace detail {
 		void clear_color_buffer_impl_(f32 r, f32 g, f32 b, f32 a) noexcept {
 			glClearColor(r, g, b, a);
@@ -173,6 +174,19 @@ namespace minirhi {
 
 		void set_mat4_binding_impl_(u32 program, std::string_view name, const glm::mat4& value) noexcept {
 			glUniformMatrix4fv(glGetUniformLocation(program, name.data()), 1, GL_FALSE, glm::value_ptr(value));
+		}
+
+		// TODO: sync
+		static bool gContextBorrowed = false;
+
+
+		void release_context_() noexcept {
+			
+		}
+
+		void borrow_context_() noexcept {
+			assert(gContextBorrowed && "The context is busy! Release the context before starting new one!");
+			gContextBorrowed = true;
 		}
 	}
 }

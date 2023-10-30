@@ -21,7 +21,7 @@
 #include <glm/mat4x4.hpp>
 
 #include <glm/vec3.hpp>
-#include <glm/vec4.hpp> // TODO: add glm
+#include <glm/vec4.hpp> 
 #include <limits>
 
 namespace minirhi
@@ -65,6 +65,9 @@ namespace minirhi
 		void set_uint_binding_impl_(u32 program, std::string_view name, u32 value) noexcept;
 		void set_float_binding_impl_(u32 program, std::string_view name, f32 value) noexcept;
 		void set_mat4_binding_impl_(u32 program, std::string_view name, const glm::mat4& value) noexcept;
+
+		void borrow_context_() noexcept;
+		void release_context_() noexcept;
 	}
 
 	template<typename Attrs, typename BS>
@@ -151,6 +154,18 @@ namespace minirhi
 			}
 		}
 
+		void clear_color_buffer(f32 r, f32 g, f32 b, f32 a) noexcept {
+			detail::clear_color_buffer_impl_(r, g, b, a);
+		}
+
+		void clear_depth_buffer() noexcept {
+			detail::clear_depth_buffer_impl_();
+		}
+
+		void clear_stencil_buffer() noexcept {
+			detail::clear_stencil_buffer_impl_();
+		}
+
 	private:
 		template<template<typename, typename> typename Slot, typename Type, typename Name>
 		void set_binding_(const Slot<Type, Name>& v, u32& bound_texture_count) const noexcept {
@@ -175,37 +190,21 @@ namespace minirhi
 	};
 
 	class CmdCtx {
-	private:
-		inline static bool context_in_use_ = false;
-
 	public:
 		template<typename Attrs, typename BS>
 		[[nodiscard]]
 		static DrawCtx<Attrs, BS> start_draw_context(const Viewport& vp, GraphicsPipeline<Attrs, BS> ps) noexcept {
-			assert(!context_in_use_ && "Current context is busy! You must finish previous context before starting new one!");
+			detail::borrow_context_();
 			static constexpr auto kAttrs = get_vtx_attr_array(Attrs{});
 			
 			u32 vao = create_vao_();
 			setup_pipeline_(vao, kAttrs, ps.raw, vp);
 
-			context_in_use_ = true;
 			return DrawCtx<Attrs, BS>(vao, u32(ps.raw.state.program), PrimitiveTopologyType(u32(ps.raw.state.topology)), context_in_use_);
 		}
-	
-		static void clear_color_buffer(f32 r, f32 g, f32 b, f32 a) noexcept {
-			detail::clear_color_buffer_impl_(r, g, b, a);
-		}
-
-		static void clear_depth_buffer() noexcept {
-			detail::clear_depth_buffer_impl_();
-		}
-
-		static void clear_stencil_buffer() noexcept {
-			detail::clear_stencil_buffer_impl_();
-		}
-
 	private:
 		static void setup_pipeline_(u32 vao, std::span<const VtxAttrData> attribs, detail::GraphicsPipelineRaw pipeline, const Viewport& vp) noexcept;
-		static u32 create_vao_() noexcept;void draw_internal_(PrimitiveTopologyType type, size_t vertex_count, size_t offset) noexcept;
+		static u32 create_vao_() noexcept;
+		void draw_internal_(PrimitiveTopologyType type, size_t vertex_count, size_t offset) noexcept;
 	};
 }

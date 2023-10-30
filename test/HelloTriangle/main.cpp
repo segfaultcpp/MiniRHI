@@ -77,7 +77,6 @@ public:
         assert(code == 0);
         pipeline_ = minirhi::generate_graphics_pipeline_from_shaders<kVS, kFS>(minirhi::PrimitiveTopologyType::eTriangle);
 
-
         vb_.reset(std::span<const Vertex>(vertices.begin(), vertices.end()));
         return 0;
     }

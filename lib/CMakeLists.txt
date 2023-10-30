@@ -5,13 +5,13 @@ set(MINIRHI_SOURCES
     CmdCtx.cpp 
     Shader.cpp 
     Texture.cpp
-    )
-    
-set(MINIRHI_BUILD_FILES_TEST_SOURCES dummy.cpp)
+)
+
 set(GLEW_USE_STATIC_LIBS OFF)
 add_library(MiniRHILib ${MINIRHI_SOURCES})
-target_include_directories(MiniRHILib PUBLIC "${CMAKE_SOURCE_DIR}/include"
-    PRIVATE "${MINIRHI_3RDPARTY_DIR}/include")
+target_include_directories(MiniRHILib 
+    PUBLIC  "${CMAKE_SOURCE_DIR}/include"
+            "${MINIRHI_3RDPARTY_DIR}/include")
 
 if(${ANDROID_ENABLE})
     target_compile_options(MiniRHILib PRIVATE -static -pedantic -DANDROID -fPIC)
@@ -20,9 +20,9 @@ elseif(UNIX)
     find_package(SDL2 REQUIRED)
     find_package(GLEW 2.0 REQUIRED)
     find_package(X11 REQUIRED)
-    target_link_libraries(MiniRHILib PRIVATE ${GLEW_LIBRARIES} ${SDL2_LIBRARIES} ${X11_LIBRARIES})
+    target_link_libraries(MiniRHILib PUBLIC ${GLEW_LIBRARIES} ${SDL2_LIBRARIES} ${X11_LIBRARIES})
 elseif(WIN32)
-    target_link_libraries(MiniRHILib PRIVATE "${MINIRHI_3RDPARTY_DIR}/lib/glew/glew32.lib" PRIVATE OpenGL32.lib)
+    target_link_libraries(MiniRHILib PUBLIC "${MINIRHI_3RDPARTY_DIR}/lib/glew/glew32.lib" OpenGL32.lib)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)

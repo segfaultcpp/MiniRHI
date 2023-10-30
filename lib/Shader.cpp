@@ -10,6 +10,7 @@
 
 #include <concepts>
 #include <array>
+#include <bit>
 
 #include <iostream>
 

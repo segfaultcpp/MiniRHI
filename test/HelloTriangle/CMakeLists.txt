@@ -1,6 +1,5 @@
 add_executable(MiniRHITestHelloTriangle main.cpp)
-target_include_directories(MiniRHITestHelloTriangle PRIVATE "${CMAKE_SOURCE_DIR}/include"
-    PRIVATE "${MINIRHI_3RDPARTY_DIR}/include"
+target_include_directories(MiniRHITestHelloTriangle PRIVATE MiniRHILib
     PRIVATE "${CMAKE_SOURCE_DIR}/test/Support")
 if(WIN32)
     target_link_libraries(MiniRHITestHelloTriangle 

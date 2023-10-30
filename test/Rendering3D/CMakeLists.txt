@@ -1,6 +1,5 @@
 add_executable(Rendering3D main.cpp)
-target_include_directories(Rendering3D PRIVATE "${CMAKE_SOURCE_DIR}/include"
-    PRIVATE "${MINIRHI_3RDPARTY_DIR}/include"
+target_include_directories(Rendering3D PRIVATE MiniRHILib
     PRIVATE "${CMAKE_SOURCE_DIR}/test/Support")
 
 if(WIN32)
