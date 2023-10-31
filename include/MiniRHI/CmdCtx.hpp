@@ -79,13 +79,11 @@ namespace minirhi
 		u32 vao_ = detail::kInvalidVAHandle;
 		u32 program_ = kShaderInvalidHandle;
 		PrimitiveTopologyType topology_ = PrimitiveTopologyType::eTriangle;
-		std::reference_wrapper<bool> context_in_use_;
 
-		DrawCtx(u32 vao, u32 program, PrimitiveTopologyType topology, bool& ctx_in_use) noexcept 
+		DrawCtx(u32 vao, u32 program, PrimitiveTopologyType topology) noexcept 
 			: vao_(vao)
 			, program_(program)
 			, topology_(topology)
-			, context_in_use_(ctx_in_use)
 		{}
 
 	public:
@@ -96,7 +94,6 @@ namespace minirhi
 			: vao_(rhs.vao_)
 			, program_(rhs.program_)
 			, topology_(rhs.topology_)
-			, context_in_use_(rhs.context_in_use_)
 		{
 			rhs.vao_ = detail::kInvalidVAHandle;
 			rhs.program_ = kShaderInvalidHandle;
@@ -111,7 +108,6 @@ namespace minirhi
 			vao_ = rhs.vao_;
 			program_ = rhs.program_;
 			topology_ = rhs.topology_;
-			context_in_use_ = rhs.context_in_use_;
 
 			rhs.vao_ = detail::kInvalidVAHandle;
 			rhs.program_ = kShaderInvalidHandle;
@@ -148,8 +144,8 @@ namespace minirhi
 				vao_ = detail::kInvalidVAHandle;
 				program_ = kShaderInvalidHandle;
 				topology_ = PrimitiveTopologyType::eCount;
-				context_in_use_.get() = false;
-				
+
+				detail::release_context_();
 				detail::unset_pipeline_impl_();
 			}
 		}
@@ -200,7 +196,7 @@ namespace minirhi
 			u32 vao = create_vao_();
 			setup_pipeline_(vao, kAttrs, ps.raw, vp);
 
-			return DrawCtx<Attrs, BS>(vao, u32(ps.raw.state.program), PrimitiveTopologyType(u32(ps.raw.state.topology)), context_in_use_);
+			return DrawCtx<Attrs, BS>(vao, u32(ps.raw.state.program), PrimitiveTopologyType(u32(ps.raw.state.topology)));
 		}
 	private:
 		static void setup_pipeline_(u32 vao, std::span<const VtxAttrData> attribs, detail::GraphicsPipelineRaw pipeline, const Viewport& vp) noexcept;

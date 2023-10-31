@@ -83,7 +83,7 @@ public:
 
     void render() noexcept override {
         auto draw_ctx = minirhi::CmdCtx::start_draw_context(kVP, pipeline_);
-        minirhi::CmdCtx::clear_color_buffer(1.0, 0.0, 0.0, 0.0);
+        draw_ctx.clear_color_buffer(1.0, 0.0, 0.0, 0.0);
         draw_ctx.draw(vb_, vertices.size(), 0);
     }
 };

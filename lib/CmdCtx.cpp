@@ -179,13 +179,12 @@ namespace minirhi {
 		// TODO: sync
 		static bool gContextBorrowed = false;
 
-
 		void release_context_() noexcept {
-			
+			gContextBorrowed = false;
 		}
 
 		void borrow_context_() noexcept {
-			assert(gContextBorrowed && "The context is busy! Release the context before starting new one!");
+			assert(!gContextBorrowed && "The context is busy! Release the context before starting new one!");
 			gContextBorrowed = true;
 		}
 	}

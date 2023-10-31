@@ -289,8 +289,8 @@ public:
         );
         auto draw_ctx = minirhi::CmdCtx::start_draw_context(kVP, pipeline_);
 
-        minirhi::CmdCtx::clear_color_buffer(0.f, 0.749, 1.f, 1.f);
-        minirhi::CmdCtx::clear_depth_buffer();
+        draw_ctx.clear_color_buffer(0.f, 0.749, 1.f, 1.f);
+        draw_ctx.clear_depth_buffer();
         std::size_t i = 0;
         for (auto pos : kObjPositions) {
             glm::mat4 model = glm::translate(glm::identity<glm::mat4>(), pos);

@@ -49,7 +49,6 @@ using u64 = uint64_t;
 
 using f32 = float;
 using f64 = double;
-using f80 = long double;
 
 template<typename T>
 concept PtrLike = std::is_pointer_v<T> || requires(T ptr) {

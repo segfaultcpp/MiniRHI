@@ -9,9 +9,12 @@ set(MINIRHI_SOURCES
 
 set(GLEW_USE_STATIC_LIBS OFF)
 add_library(MiniRHILib ${MINIRHI_SOURCES})
-target_include_directories(MiniRHILib 
-    PUBLIC  "${CMAKE_SOURCE_DIR}/include"
-            "${MINIRHI_3RDPARTY_DIR}/include")
+target_include_directories(
+    MiniRHILib 
+    PUBLIC 
+        "${CMAKE_SOURCE_DIR}/include"
+        "${MINIRHI_3RDPARTY_DIR}/include"
+)
 
 if(${ANDROID_ENABLE})
     target_compile_options(MiniRHILib PRIVATE -static -pedantic -DANDROID -fPIC)
